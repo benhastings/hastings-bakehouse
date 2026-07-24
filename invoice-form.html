@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Form Template</title>
+<style>
+    body {
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        background-color: #e9ecef; /* Gray background for the screen */
+        padding: 40px 20px;
+        margin: 0;
+        display: flex;
+        justify-content: center;
+    }
+    .template-container {
+        background-color: #ffffff; /* Stark white background for the transparent logo */
+        padding: 50px;
+        border-radius: 4px;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        width: 100%;
+        max-width: 850px;
+    }
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        border-bottom: 3px solid #333;
+        padding-bottom: 20px;
+        margin-bottom: 30px;
+    }
+    .logo-container {
+        width: 250px; /* Adjust based on your logo's aspect ratio */
+    }
+    .logo-container img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+    }
+    .header-details {
+        text-align: right;
+    }
+    .header-details h1 {
+        margin: 0 0 15px 0;
+        color: #333;
+        font-size: 32px;
+        letter-spacing: 2px;
+    }
+    .header-input {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    .header-input label {
+        margin-right: 10px;
+        font-weight: bold;
+        color: #555;
+    }
+    input[type="text"], input[type="date"], input[type="email"], input[type="number"], textarea {
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-family: inherit;
+        font-size: 14px;
+    }
+    .header-input input {
+        width: 120px;
+    }
+    .form-section {
+        margin-bottom: 40px;
+    }
+    .form-section h3 {
+        background-color: #f4f4f4;
+        padding: 10px;
+        color: #333;
+        font-size: 16px;
+        text-transform: uppercase;
+        margin-bottom: 15px;
+        border-left: 4px solid #333;
+    }
+    .customer-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+    .form-group label {
+        font-weight: bold;
+        margin-bottom: 5px;
+        color: #555;
+        font-size: 13px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+    th, td {
+        border: 1px solid #ddd;
+        padding: 12px;
+        text-align: left;
+    }
+    th {
+        background-color: #fafafa;
+        font-weight: bold;
+        color: #333;
+    }
+    .table-input {
+        width: 100%;
+        box-sizing: border-box;
+        border: none !important;
+        background: transparent;
+        outline: none;
+    }
+    .table-input:focus {
+        border-bottom: 1px solid #007bff !important;
+        border-radius: 0;
+    }
+    .totals-section {
+        display: flex;
+        justify-content: flex-end;
+    }
+    .totals-box {
+        width: 300px;
+    }
+    .totals-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #eee;
+    }
+    .totals-row:last-child {
+        border-bottom: none;
+        border-top: 2px solid #333;
+        font-size: 18px;
+        font-weight: bold;
+    }
+    .totals-row input {
+        width: 120px;
+        text-align: right;
+        border: none;
+        background: transparent;
+        outline: none;
+    }
+    
+    /* Print Styles: Hides borders and background colors for a clean printout */
+    @media print {
+        body { background-color: #ffffff; padding: 0; }
+        .template-container { box-shadow: none; border: none; padding: 0; max-width: 100%; }
+        input[type="text"], input[type="date"], input[type="email"], input[type="number"], textarea {
+            border: 1px solid transparent; 
+            background: transparent;
+        }
+        .form-section h3 { background-color: transparent; border-bottom: 2px solid #333; border-left: none; padding-left: 0; }
+        ::-webkit-input-placeholder { color: transparent; }
+        :-moz-placeholder { color: transparent; }
+        ::-moz-placeholder { color: transparent; }
+        :-ms-input-placeholder { color: transparent; }
+    }
+</style>
+</head>
+<body>
+
+<div class="template-container">
+    
+    <!-- Header Section -->
+    <div class="header">
+        <div class="logo-container">
+            <!-- Ensure this points to your transparent logo -->
+            <img src="YOUR_TRANSPARENT_LOGO.png" alt="Company Logo">
+        </div>
+        <div class="header-details">
+            <h1>ORDER FORM</h1>
+            <div class="header-input">
+                <label>Date:</label>
+                <input type="date">
+            </div>
+            <div class="header-input">
+                <label>Order #:</label>
+                <input type="text" placeholder="000000">
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer Information -->
+    <div class="form-section">
+        <h3>Customer Details</h3>
+        <div class="customer-grid">
+            <div class="form-group">
+                <label>Name / Company</label>
+                <input type="text" placeholder="Enter customer name">
+            </div>
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" placeholder="customer@example.com">
+            </div>
+            <div class="form-group" style="grid-column: span 2;">
+                <label>Shipping Address</label>
+                <textarea rows="2" placeholder="Street, City, State, ZIP"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Items -->
+    <div class="form-section">
+        <h3>Order Details</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 15%;">Item #</th>
+                    <th style="width: 50%;">Description</th>
+                    <th style="width: 15%;">Qty</th>
+                    <th style="width: 20%;">Line Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Repeatable rows for items -->
+                <tr>
+                    <td><input type="text" class="table-input" placeholder="---"></td>
+                    <td><input type="text" class="table-input" placeholder="---"></td>
+                    <td><input type="number" class="table-input" placeholder="0"></td>
+                    <td><input type="text" class="table-input" placeholder="$0.00"></td>
+                </tr>
+                <tr>
+                    <td><input type="text" class="table-input" placeholder="---"></td>
+                    <td><input type="text" class="table-input" placeholder="---"></td>
+                    <td><input type="number" class="table-input" placeholder="0"></td>
+                    <td><input type="text" class="table-input" placeholder="$0.00"></td>
+                </tr>
+                <tr>
+                    <td><input type="text" class="table-input" placeholder="---"></td>
+                    <td><input type="text" class="table-input" placeholder="---"></td>
+                    <td><input type="number" class="table-input" placeholder="0"></td>
+                    <td><input type="text" class="table-input" placeholder="$0.00"></td>
+                </tr>
+                 <tr>
+                    <td><input type="text" class="table-input" placeholder="---"></td>
+                    <td><input type="text" class="table-input" placeholder="---"></td>
+                    <td><input type="number" class="table-input" placeholder="0"></td>
+                    <td><input type="text" class="table-input" placeholder="$0.00"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Totals & Notes -->
+    <div class="totals-section">
+        <div class="totals-box">
+            <div class="totals-row">
+                <span>Subtotal:</span>
+                <input type="text" placeholder="$0.00">
+            </div>
+            <div class="totals-row">
+                <span>Tax / Shipping:</span>
+                <input type="text" placeholder="$0.00">
+            </div>
+            <div class="totals-row">
+                <span>Total Due:</span>
+                <input type="text" placeholder="$0.00">
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-section" style="margin-top: 30px;">
+        <h3>Additional Instructions</h3>
+        <textarea rows="3" style="width: 100%; box-sizing: border-box;" placeholder="Enter any special notes, terms, or delivery instructions here..."></textarea>
+    </div>
+
+</div>
+
+</body>
+</html>
