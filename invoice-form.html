@@ -1,286 +1,443 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" type="image/png" href="fav/favicon-96x96.png" sizes="96x96" />
-<link rel="icon" type="image/svg+xml" href="fav/favicon.svg" />
-<link rel="shortcut icon" href="fav/favicon.ico" />
-<link rel="apple-touch-icon" sizes="180x180" href="fav/apple-touch-icon.png" />
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/jspdf@latest/dist/jspdf.umd.min.js"></script>
 
-<title>Invoice Template</title>
-<style>
-    body {
-        font-family: 'Lora', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-        background-color: #e9ecef; /* Gray background for the screen */
-        padding: 40px 20px;
-        margin: 0;
-        display: flex;
-        justify-content: center;
-    }
-    .template-container {
-        background-color: #ffffff; /* Stark white background for the transparent logo */
-        padding: 50px;
-        border-radius: 4px;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-        width: 100%;
-        max-width: 850px;
-    }
-    .header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        border-bottom: 3px solid #333;
-        padding-bottom: 20px;
-        margin-bottom: 30px;
-    }
-    .logo-container {
-        width: 250px; /* Adjust based on your logo's aspect ratio */
-    }
-    .logo-container img {
-        max-width: 100%;
-        height: auto;
-        display: block;
-    }
-    .header-details {
-        text-align: right;
-    }
-    .header-details h1 {
-        margin: 0 0 15px 0;
-        color: #333;
-        font-size: 32px;
-        letter-spacing: 2px;
-    }
-    .header-input {
-        display: flex;
-        justify-content: flex-end;
-        align-items: center;
-        margin-bottom: 8px;
-    }
-    .header-input label {
-        margin-right: 10px;
-        font-weight: bold;
-        color: #555;
-    }
-    input[type="text"], input[type="date"], input[type="email"], input[type="number"], textarea {
-        padding: 8px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        font-family: inherit;
-        font-size: 14px;
-    }
-    .header-input input {
-        width: 120px;
-    }
-    .form-section {
-        margin-bottom: 40px;
-    }
-    .form-section h3 {
-        background-color: #f4f4f4;
-        padding: 10px;
-        color: #333;
-        font-size: 16px;
-        text-transform: uppercase;
-        margin-bottom: 15px;
-        border-left: 4px solid #333;
-    }
-    .customer-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-    }
-    .form-group {
-        display: flex;
-        flex-direction: column;
-    }
-    .form-group label {
-        font-weight: bold;
-        margin-bottom: 5px;
-        color: #555;
-        font-size: 13px;
-    }
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 10px;
-    }
-    th, td {
-        border: 1px solid #ddd;
-        padding: 12px;
-        text-align: left;
-    }
-    th {
-        background-color: #fafafa;
-        font-weight: bold;
-        color: #333;
-    }
-    .table-input {
-        width: 100%;
-        box-sizing: border-box;
-        border: none !important;
-        background: transparent;
-        outline: none;
-    }
-    .table-input:focus {
-        border-bottom: 1px solid #007bff !important;
-        border-radius: 0;
-    }
-    .totals-section {
-        display: flex;
-        justify-content: flex-end;
-    }
-    .totals-box {
-        width: 300px;
-    }
-    .totals-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 0;
-        border-bottom: 1px solid #eee;
-    }
-    .totals-row:last-child {
-        border-bottom: none;
-        border-top: 2px solid #333;
-        font-size: 18px;
-        font-weight: bold;
-    }
-    .totals-row input {
-        width: 120px;
-        text-align: right;
-        border: none;
-        background: transparent;
-        outline: none;
-    }
-    
-    /* Print Styles: Hides borders and background colors for a clean printout */
-    @media print {
-        body { background-color: #ffffff; padding: 0; }
-        .template-container { box-shadow: none; border: none; padding: 0; max-width: 100%; }
-        input[type="text"], input[type="date"], input[type="email"], input[type="number"], textarea {
-            border: 1px solid transparent; 
-            background: transparent;
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="fav/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="fav/favicon.svg" />
+    <link rel="shortcut icon" href="fav/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="fav/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap"
+        rel="stylesheet">
+
+
+    <title>Invoice Template</title>
+    <style>
+        body {
+            font-family: 'Lora', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #e9ecef;
+            /* Gray background for the screen */
+            padding: 40px 20px;
+            margin: 0;
+            display: flex;
+            justify-content: center;
         }
-        .form-section h3 { background-color: transparent; border-bottom: 2px solid #333; border-left: none; padding-left: 0; }
-        ::-webkit-input-placeholder { color: transparent; }
-        :-moz-placeholder { color: transparent; }
-        ::-moz-placeholder { color: transparent; }
-        :-ms-input-placeholder { color: transparent; }
-    }
-</style>
+
+        .template-container {
+            background-color: #ffffff;
+            /* Stark white background for the transparent logo */
+            padding: 50px;
+            border-radius: 4px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 850px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 3px solid #333;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .logo-container {
+            width: 200px;
+            /* Adjust based on your logo's aspect ratio */
+        }
+
+        .logo-container img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .header-details {
+            text-align: right;
+        }
+
+        .header-details h1 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 32px;
+            letter-spacing: 2px;
+        }
+
+        .header-input {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .header-input label {
+            margin-right: 10px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        input[type="text"],
+        input[type="date"],
+        input[type="email"],
+        input[type="number"],
+        textarea {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        .header-input input {
+            width: 120px;
+        }
+
+        .form-section {
+            margin-bottom: 10px;
+        }
+
+        .form-section h3 {
+            background-color: #f4f4f4;
+            padding: 5px;
+            color: #333;
+            font-size: 16px;
+            text-transform: uppercase;
+            /* margin-bottom: 5px;a */
+            border-left: 2px solid #333;
+        }
+
+        .customer-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+            font-size: 13px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 5px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #fafafa;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .table-input {
+            width: 100%;
+            box-sizing: border-box;
+            border: none !important;
+            background: transparent;
+            outline: none;
+        }
+
+        .table-input:focus {
+            border-bottom: 1px solid #007bff !important;
+            border-radius: 0;
+        }
+
+        .totals-section {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .totals-box {
+            width: 300px;
+        }
+
+        .totals-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .totals-row:last-child {
+            border-bottom: none;
+            border-top: 2px solid #333;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .totals-row input {
+            width: 120px;
+            text-align: right;
+            border: none;
+            background: transparent;
+            outline: none;
+        }
+
+        #totalDue {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        /* Print Styles: Hides borders and background colors for a clean printout */
+        @media print {
+            #generate-invoice {
+                display: none;
+            }
+
+            body {
+                background-color: #ffffff;
+                padding: 0;
+            }
+
+            .template-container {
+                box-shadow: none;
+                border: none;
+                padding: 0;
+                max-width: 100%;
+            }
+
+            input[type="text"],
+            input[type="date"],
+            input[type="email"],
+            input[type="number"],
+            textarea {
+                border: 1px solid transparent;
+                background: transparent;
+            }
+
+            .form-section h3 {
+                background-color: transparent;
+                border-bottom: 2px solid #333;
+                border-left: none;
+                padding-left: 0;
+            }
+
+            ::-webkit-input-placeholder {
+                color: transparent;
+            }
+
+            :-moz-placeholder {
+                color: transparent;
+            }
+
+            ::-moz-placeholder {
+                color: transparent;
+            }
+
+            :-ms-input-placeholder {
+                color: transparent;
+            }
+        }
+    </style>
 </head>
+
 <body>
 
-<div class="template-container">
-    
-    <!-- Header Section -->
-    <div class="header">
-        <div class="logo-container">
-            <!-- Ensure this points to your transparent logo -->
-            <img src="bakehouse.png" alt="Company Logo">
-        </div>
-        <div class="header-details">
-            <h1>Invoice</h1>
-            <div class="header-input">
-                <label>Date:</label>
-                <input type="date">
-            </div>
-            <div class="header-input">
-                <label>Order #:</label>
-                <input type="text" placeholder="000000">
-            </div>
-        </div>
-    </div>
+    <div class="template-container" id="invoice">
 
-    <!-- Customer Information -->
-    <div class="form-section">
-        <h3>Customer Details</h3>
-        <div class="customer-grid">
-            <div class="form-group">
-                <label>Name / Company</label>
-                <input type="text" placeholder="Enter customer name">
+        <!-- Header Section -->
+        <div class="header">
+            <div class="logo-container">
+                <!-- Ensure this points to your transparent logo -->
+                <img src="bakehouse.png" alt="Company Logo">
             </div>
-            <div class="form-group">
-                <label>Email Address</label>
-                <input type="email" placeholder="customer@example.com">
-            </div>
-            <div class="form-group" style="grid-column: span 2;">
-                <label>Shipping Address</label>
-                <textarea rows="2" placeholder="Street, City, State, ZIP"></textarea>
+            <div class="header-details">
+                <h1>Invoice</h1>
+                <div class="header-input">
+                    <label>Date:</label>
+                    <input type="date">
+                </div>
+                <div class="header-input">
+                    <label>Order #:</label>
+                    <input type="text" placeholder="000000">
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Order Items -->
-    <div class="form-section">
-        <h3>Order Details</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th style="width: 15%;">Item #</th>
-                    <th style="width: 50%;">Description</th>
-                    <th style="width: 15%;">Qty</th>
-                    <th style="width: 20%;">Line Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Repeatable rows for items -->
-                <tr>
-                    <td><input type="text" class="table-input" placeholder="---"></td>
-                    <td><input type="text" class="table-input" placeholder="---"></td>
-                    <td><input type="number" class="table-input" placeholder="0"></td>
-                    <td><input type="text" class="table-input" placeholder="$0.00"></td>
-                </tr>
-                <tr>
-                    <td><input type="text" class="table-input" placeholder="---"></td>
-                    <td><input type="text" class="table-input" placeholder="---"></td>
-                    <td><input type="number" class="table-input" placeholder="0"></td>
-                    <td><input type="text" class="table-input" placeholder="$0.00"></td>
-                </tr>
-                <tr>
-                    <td><input type="text" class="table-input" placeholder="---"></td>
-                    <td><input type="text" class="table-input" placeholder="---"></td>
-                    <td><input type="number" class="table-input" placeholder="0"></td>
-                    <td><input type="text" class="table-input" placeholder="$0.00"></td>
-                </tr>
-                 <tr>
-                    <td><input type="text" class="table-input" placeholder="---"></td>
-                    <td><input type="text" class="table-input" placeholder="---"></td>
-                    <td><input type="number" class="table-input" placeholder="0"></td>
-                    <td><input type="text" class="table-input" placeholder="$0.00"></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Totals & Notes -->
-    <div class="totals-section">
-        <div class="totals-box">
-            <div class="totals-row">
-                <span>Subtotal:</span>
-                <input type="text" placeholder="$0.00">
-            </div>
-            <div class="totals-row">
-                <span>Delivery/Fees</span>
-                <input type="text" placeholder="$0.00">
-            </div>
-            <div class="totals-row">
-                <span>Total Due:</span>
-                <input type="text" placeholder="$0.00">
+        <!-- Customer Information -->
+        <div class="form-section">
+            <h3>Customer Details</h3>
+            <div class="customer-grid">
+                <div class="form-group">
+                    <label>Name / Company</label>
+                    <input type="text" placeholder="Enter customer name">
+                </div>
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" placeholder="customer@example.com">
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                    <label>Shipping Address</label>
+                    <textarea rows="2" placeholder="Street, City, State, ZIP"></textarea>
+                </div>
             </div>
         </div>
+
+        <!-- Order Items -->
+        <div class="form-section">
+            <h3>Order Details</h3>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:35%">Description</th>
+                        <th style="width:15%">Unit Cost</th>
+                        <th style="width:15%">Qty</th>
+                        <th style="width:20%">Line Total</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    <tr>
+                        <td><input type="text" class="table-input" placeholder="---"></td>
+                        <td><input type="number" class="table-input unit-cost" step="0.01" min="0" inputmode="decimal">
+                        </td>
+                        <td><input type="number" class="table-input quantity" min="0"></td>
+                        <td><input type="text" class="table-input line-total" value="$0.00" readonly></td>
+                    </tr>
+
+                    <tr>
+                        <td><input type="text" class="table-input" placeholder="---"></td>
+                        <td><input type="number" class="table-input unit-cost" step="0.01" min="0" inputmode="decimal">
+                        </td>
+                        <td><input type="number" class="table-input quantity" min="0"></td>
+                        <td><input type="text" class="table-input line-total" value="$0.00" readonly></td>
+                    </tr>
+
+                    <tr>
+                        <td><input type="text" class="table-input" placeholder="---"></td>
+                        <td><input type="number" class="table-input unit-cost" step="0.01" min="0" inputmode="decimal">
+                        </td>
+                        <td><input type="number" class="table-input quantity" min="0"></td>
+                        <td><input type="text" class="table-input line-total" value="$0.00" readonly></td>
+                    </tr>
+
+                    <tr>
+                        <td><input type="text" class="table-input" placeholder="---"></td>
+                        <td><input type="number" class="table-input unit-cost" step="0.01" min="0" inputmode="decimal">
+                        </td>
+                        <td><input type="number" class="table-input quantity" min="0"></td>
+                        <td><input type="text" class="table-input line-total" value="$0.00" readonly></td>
+                    </tr>
+
+                    <tr>
+                        <td><input type="text" class="table-input" placeholder="---"></td>
+                        <td><input type="number" class="table-input unit-cost" step="0.01" min="0" inputmode="decimal">
+                        </td>
+                        <td><input type="number" class="table-input quantity" min="0"></td>
+                        <td><input type="text" class="table-input line-total" value="$0.00" readonly></td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Totals & Notes -->
+        <div class="totals-section">
+            <div class="totals-box">
+
+                <div class="totals-row">
+                    <span>Subtotal:</span>
+                    <input type="text" id="subtotal" value="$0.00" readonly>
+                </div>
+
+                <div class="totals-row">
+                    <span>Delivery / Fees:</span>
+                    <input type="number" id="deliveryFee" step="0.01" min="0" value="0.00" inputmode="decimal">
+                </div>
+
+                <div class="totals-row">
+                    <span>Total Due:</span>
+                    <input type="text" id="totalDue" value="$0.00" readonly>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="form-section" style="margin-top: 30px;">
+            <h3>Additional Instructions</h3>
+            <textarea rows="3" style="width: 100%; box-sizing: border-box;"
+                placeholder="Enter any special notes, terms, or delivery instructions here..."></textarea>
+        </div>
+
     </div>
-    
-    <div class="form-section" style="margin-top: 30px;">
-        <h3>Additional Instructions</h3>
-        <textarea rows="3" style="width: 100%; box-sizing: border-box;" placeholder="Enter any special notes, terms, or delivery instructions here..."></textarea>
+    <div>
+        <button onclick="window.print()" id="generate-invoice">Save Invoice</button>
     </div>
 
-</div>
-<button id="generate-invoice">Generate Invoice PDF</button>
 </body>
+
 </html>
+
+<script>
+    // Format a number as US currency.
+    function formatMoney(value) {
+        return value.toLocaleString("en-US", {
+            style: "currency",
+            currency: "USD"
+        });
+    }
+
+    function calculateTotals() {
+
+        let subtotal = 0;
+
+        document.querySelectorAll("tbody tr").forEach(row => {
+
+            const unitCost =
+                parseFloat(row.querySelector(".unit-cost").value) || 0;
+
+            const quantity =
+                parseFloat(row.querySelector(".quantity").value) || 0;
+
+            const lineTotal = unitCost * quantity;
+
+            row.querySelector(".line-total").value =
+                formatMoney(lineTotal);
+
+            subtotal += lineTotal;
+        });
+
+        document.getElementById("subtotal").value =
+            formatMoney(subtotal);
+
+        const delivery =
+            parseFloat(document.getElementById("deliveryFee").value) || 0;
+
+        document.getElementById("totalDue").value =
+            formatMoney(subtotal + delivery);
+    }
+
+    // Watch for changes in any Unit Cost or Quantity field.
+    document.querySelectorAll(".unit-cost, .quantity").forEach(input => {
+        input.addEventListener("input", calculateTotals);
+    });
+
+    // Watch the Delivery / Fees field.
+    document
+        .getElementById("deliveryFee")
+        .addEventListener("input", calculateTotals);
+
+    // Populate totals on page load.
+    calculateTotals();
+</script>
