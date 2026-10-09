@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    /* Apps Script's HTML→PDF converter has limited CSS support: tables, no flexbox, no web fonts. */
+    @page { size: letter; margin: 0.6in; }
+    body { font-family: Georgia, 'Times New Roman', serif; color: #2b2b2b; font-size: 12pt; margin: 0; }
+    table { border-collapse: collapse; width: 100%; }
+    .header td { vertical-align: top; }
+    .header { border-bottom: 3px solid #333; margin-bottom: 18pt; }
+    .header .logo img { width: 150px; }
+    .header .meta { text-align: right; }
+    .meta h1 { margin: 0 0 10pt; font-size: 26pt; letter-spacing: 2px; color: #333; }
+    .meta div { margin-bottom: 4pt; }
+    .label { font-weight: bold; color: #555; }
+    h3 {
+      font-size: 11pt; text-transform: uppercase; letter-spacing: .5px; color: #333;
+      border-bottom: 2px solid #333; padding-bottom: 3pt; margin: 18pt 0 8pt;
+    }
+    .items th, .items td { border: 1px solid #ddd; padding: 6pt; text-align: left; }
+    .items th { background: #fafafa; }
+    .items .n { text-align: right; }
+    .totals { width: 260px; margin-left: auto; margin-top: 12pt; }
+    .totals td { padding: 5pt 0; border-bottom: 1px solid #eee; }
+    .totals td.n { text-align: right; }
+    .totals tr.grand td { border-top: 2px solid #333; border-bottom: 0; font-size: 14pt; font-weight: bold; }
+    .notes { white-space: pre-wrap; }
+    .footer { margin-top: 30pt; text-align: center; color: #1f4d38; font-style: italic; }
+    .contact { text-align: center; color: #6b6b6b; font-size: 10pt; margin-top: 4pt; }
+  </style>
+</head>
+<body>
+  <table class="header">
+    <tr>
+      <td class="logo"><img src="<?!= data.logo ?>" alt="<?= data.businessName ?>"></td>
+      <td class="meta">
+        <h1>INVOICE</h1>
+        <div><span class="label">Date:</span> <?= data.date ?></div>
+        <div><span class="label">Invoice #:</span> <?= data.number ?></div>
+        <? if (data.weekLabel) { ?><div><span class="label">Week of:</span> <?= data.weekLabel ?></div><? } ?>
+      </td>
+    </tr>
+  </table>
+
+  <h3>Bill to</h3>
+  <div><b><?= data.customer ?></b></div>
+  <? if (data.email) { ?><div><?= data.email ?></div><? } ?>
+
+  <h3>Order details</h3>
+  <table class="items">
+    <thead>
+      <tr><th style="width:50%">Description</th><th class="n">Unit cost</th><th class="n">Qty</th><th class="n">Line total</th></tr>
+    </thead>
+    <tbody>
+      <? data.lines.forEach(function (line) { ?>
+      <tr><td><?= line.product ?></td><td class="n"><?= line.unitPrice ?></td><td class="n"><?= line.qty ?></td><td class="n"><?= line.lineTotal ?></td></tr>
+      <? }); ?>
+    </tbody>
+  </table>
+
+  <table class="totals">
+    <tr><td>Subtotal</td><td class="n"><?= data.subtotal ?></td></tr>
+    <? if (data.fees) { ?><tr><td>Delivery / Fees</td><td class="n"><?= data.fees ?></td></tr><? } ?>
+    <tr class="grand"><td>Total due</td><td class="n"><?= data.total ?></td></tr>
+  </table>
+
+  <? if (data.notes) { ?>
+  <h3>Additional instructions</h3>
+  <div class="notes"><?= data.notes ?></div>
+  <? } ?>
+
+  <div class="footer"><?= data.footer ?></div>
+  <div class="contact"><?= data.businessName ?> · <?= data.businessEmail ?></div>
+</body>
+</html>
