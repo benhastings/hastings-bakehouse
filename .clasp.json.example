@@ -1,0 +1,5 @@
+{
+  "scriptId": "PASTE_SCRIPT_ID_HERE",
+  "rootDir": "apps-script",
+  "filePushOrder": ["apps-script/Lib.js", "apps-script/Config.js"]
+}
