@@ -104,5 +104,21 @@ apps-script/        deployed to Apps Script by clasp
   InvoicePrint.html invoice PDF template
 tests/              node --test suites + fake Google services
 tools/              dev server, logo builder
-invoice-form.html   original static invoice page (GitHub Pages), to be retired once the app is live
+index.html          public landing page (GitHub Pages)
+img/, fonts/        site images (EXIF stripped) and self-hosted fonts
+robots.txt, sitemap.xml, 404.html   search and error pages for the site
+invoice-form.html   original static invoice page (GitHub Pages, noindex), to be retired once the app is live
 ```
+
+## Website
+
+`index.html` is the public site, served by GitHub Pages from `main`. It is plain HTML and CSS with one small script
+that loads each photo as it nears the screen. There is no build step.
+
+- **Photos**: never commit camera originals. They carry GPS location in their EXIF data. Export web copies with the metadata stripped:
+  `magick original.jpeg -auto-orient -resize 1800x -strip -quality 74 img/name-1800.jpg`, plus a `-900` size, and
+  `.webp` versions of both (`magick img/name-1800.jpg -quality 70 img/name-1800.webp`).
+- **Fonts**: Cormorant Garamond and Jost (SIL Open Font License), Latin subset, served from `fonts/`.
+- **URLs**: the canonical link, Open Graph tags, JSON-LD, `robots.txt` and `sitemap.xml` all use
+  `https://benhastings.github.io/hastings-bakehouse/`. When `hastingsbakehouse.com` moves to GitHub Pages, update them
+  all and change the absolute links in `404.html`.
