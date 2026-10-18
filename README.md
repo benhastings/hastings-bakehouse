@@ -119,6 +119,5 @@ that loads each photo as it nears the screen. There is no build step.
   `magick original.jpeg -auto-orient -resize 1800x -strip -quality 74 img/name-1800.jpg`, plus a `-900` size, and
   `.webp` versions of both (`magick img/name-1800.jpg -quality 70 img/name-1800.webp`).
 - **Fonts**: Cormorant Garamond and Jost (SIL Open Font License), Latin subset, served from `fonts/`.
-- **URLs**: the canonical link, Open Graph tags, JSON-LD, `robots.txt` and `sitemap.xml` all use
-  `https://benhastings.github.io/hastings-bakehouse/`. When `hastingsbakehouse.com` moves to GitHub Pages, update them
-  all and change the absolute links in `404.html`.
+- **URLs**: the site lives at `https://hastingsbakehouse.com/` (`CNAME` file). The canonical link, Open Graph tags,
+  JSON-LD, `robots.txt` and `sitemap.xml` all use that address. If the domain or host changes, update them together.
