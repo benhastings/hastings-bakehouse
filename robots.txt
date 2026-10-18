@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://benhastings.github.io/hastings-bakehouse/sitemap.xml
+Sitemap: https://hastingsbakehouse.com/sitemap.xml
