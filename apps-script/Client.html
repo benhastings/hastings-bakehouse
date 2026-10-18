@@ -1,0 +1,544 @@
+<script>
+  /* global google */
+  const $ = id => document.getElementById(id);
+
+  const state = {
+    app: null,          // getAppData() result
+    week: null,         // getProductionWeek() result
+    edits: {},          // date -> { made: {}, loss: {} } for days changed since load
+    open: {},           // date -> expanded?
+    invoice: null,      // invoice being edited (number, weekOf, items...)
+  };
+
+  // ---------- helpers ----------
+
+  /** Promise wrapper around google.script.run. */
+  function run(fn, ...args) {
+    return new Promise((resolve, reject) => {
+      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[fn](...args);
+    });
+  }
+
+  function errorMessage(err) {
+    return (err && err.message ? err.message : String(err)).replace(/^Exception: /, '');
+  }
+
+  let toastTimer;
+  function toast(message, isError) {
+    const el = $('toast');
+    el.textContent = message;
+    el.className = 'toast' + (isError ? ' error' : '');
+    el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.hidden = true; }, isError ? 8000 : 3500);
+  }
+
+  /** Disable a button while an async action runs. */
+  async function busy(button, label, fn) {
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = label;
+    try {
+      return await fn();
+    } catch (err) {
+      toast(errorMessage(err), true);
+    } finally {
+      button.disabled = false;
+      button.textContent = original;
+    }
+  }
+
+  function el(tag, attrs, ...children) {
+    const node = document.createElement(tag);
+    Object.entries(attrs || {}).forEach(([k, v]) => {
+      if (k === 'class') node.className = v;
+      else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
+      else if (v === true) node.setAttribute(k, '');
+      else if (v !== false && v !== null && v !== undefined) node.setAttribute(k, v);
+    });
+    children.flat().forEach(c => node.append(c instanceof Node ? c : document.createTextNode(c)));
+    return node;
+  }
+
+  const money = n => (Number(n) || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+  const cents = v => Math.round(num(v) * 100);
+
+  const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  function parseIso(iso) { const [y, m, d] = iso.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)); }
+  function addDays(iso, n) { const d = parseIso(iso); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+  function dayLabel(iso) { const d = parseIso(iso); return DAY_NAMES[d.getUTCDay()] + ' ' + (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); }
+  function mondayOf(iso) { const dow = parseIso(iso).getUTCDay(); return addDays(iso, dow === 0 ? -6 : 1 - dow); }
+
+  // ---------- tabs ----------
+
+  function showView(name) {
+    document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.view === name)));
+    ['production', 'invoice', 'history'].forEach(v => { $('view-' + v).hidden = v !== name; });
+    $('savebar').hidden = name !== 'production' || !hasEdits();
+    if (name === 'history') loadHistory();
+    window.scrollTo(0, 0);
+  }
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+    if (!state.app || state.app.setupNeeded) return;
+    showView(t.dataset.view);
+  }));
+
+  // ---------- startup & setup ----------
+
+  async function init() {
+    try {
+      state.app = await run('getAppData');
+    } catch (err) {
+      $('loading').innerHTML = '';
+      $('loading').append(el('div', { class: 'banner error' },
+        'Couldn\'t load: ' + errorMessage(err) + '. Make sure your Google account can edit the accounting sheet.'));
+      return;
+    }
+    $('loading').hidden = true;
+    if (state.app.setupNeeded) {
+      $('setup').hidden = false;
+      return;
+    }
+    fillLists();
+    newInvoice();
+    await loadWeek(state.app.productionMonday);
+    showView('production');
+  }
+
+  $('run-setup').addEventListener('click', e => busy(e.target, 'Setting up…', async () => {
+    const changes = await run('setupSheet');
+    $('setup-result').replaceChildren(el('div', { class: 'banner ok' },
+      el('b', {}, 'Done. '), el('ul', {}, changes.map(c => el('li', {}, c)))));
+    state.app = await run('getAppData');
+    if (!state.app.setupNeeded) {
+      fillLists();
+      newInvoice();
+      await loadWeek(state.app.productionMonday);
+      $('setup').hidden = true;
+      showView('production');
+      toast('Sheet is ready.');
+    }
+  }));
+
+  function fillLists() {
+    const a = state.app;
+    $('customer-list').replaceChildren(...a.customers.map(c => el('option', { value: c.name })));
+    $('goods-list').replaceChildren(...a.goods.map(g => el('option', { value: g })));
+    $('product-list').replaceChildren(...a.products.map(p => el('option', { value: p })));
+  }
+
+  async function refreshAppData() {
+    state.app = await run('getAppData');
+    fillLists();
+  }
+
+  // ---------- production ----------
+
+  function hasEdits() { return Object.keys(state.edits).length > 0; }
+
+  async function loadWeek(monday) {
+    if (hasEdits() && !confirm('You have unsaved production changes. Discard them?')) return;
+    state.edits = {};
+    $('days').replaceChildren(el('div', { class: 'loading' }, el('div', { class: 'spinner' }), 'Loading week…'));
+    try {
+      state.week = await run('getProductionWeek', monday);
+    } catch (err) {
+      $('days').replaceChildren(el('div', { class: 'banner error' }, errorMessage(err)));
+      return;
+    }
+    const wide = window.matchMedia('(min-width: 900px)').matches;
+    state.open = {};
+    state.week.days.forEach(d => { state.open[d.date] = wide || d.date === state.app.today; });
+    if (!wide && !state.week.days.some(d => state.open[d.date])) state.open[state.week.days[0].date] = true;
+    renderWeek();
+  }
+
+  function dayValues(day) {
+    return state.edits[day.date] || { made: Object.assign({}, day.made), loss: Object.assign({}, day.loss) };
+  }
+
+  function sumMap(m) { return Object.values(m).reduce((s, v) => s + num(v), 0); }
+
+  function renderWeek() {
+    const w = state.week;
+    $('week-label').textContent = 'Week of ' + w.label;
+    $('days').replaceChildren(...w.days.map(day => {
+      const vals = dayValues(day);
+      const made = sumMap(vals.made);
+      const loss = sumMap(vals.loss);
+      const summary = made || loss ? made + ' made' + (loss ? ' · ' + loss + ' loss' : '') : 'nothing entered';
+      const open = state.open[day.date];
+      const input = (kind, product) => el('input', {
+        type: 'number', min: '0', step: '1', inputmode: 'numeric',
+        value: vals[kind][product] || '', 'aria-label': product + ' ' + kind,
+        oninput: e => editDay(day, kind, product, e.target.value),
+      });
+      return el('div', {
+        class: 'card day' + (day.date === state.app.today ? ' today' : '') + (state.edits[day.date] ? ' dirty' : ''),
+      },
+        el('button', {
+          class: 'day-head', 'aria-expanded': String(open),
+          onclick: () => { state.open[day.date] = !open; renderWeek(); },
+        }, el('span', { class: 'name' }, dayLabel(day.date)), el('span', { class: 'muted small' }, summary + (open ? ' ▴' : ' ▾'))),
+        open ? el('div', { class: 'day-body' },
+          el('table', {},
+            el('thead', {}, el('tr', {}, el('th', {}, 'Product'), el('th', {}, 'Made'), el('th', {}, 'Loss'))),
+            el('tbody', {}, w.products.map(p => el('tr', {}, el('td', {}, p), el('td', {}, input('made', p)), el('td', {}, input('loss', p)))))),
+          day.otherNotes.length ? el('div', { class: 'other' }, 'Also in the sheet for this day: ' + day.otherNotes.join(', ')) : '')
+          : '');
+    }));
+    renderWeekTotals();
+    $('savebar').hidden = !hasEdits();
+  }
+
+  /** Live totals: server totals adjusted by unsaved edits. */
+  function renderWeekTotals() {
+    const w = state.week;
+    const rows = w.products.map(p => {
+      let total = num(w.totals[p]);
+      Object.keys(state.edits).forEach(date => {
+        const orig = w.days.find(d => d.date === date);
+        const edit = state.edits[date];
+        total += (num(edit.made[p]) - num(edit.loss[p])) - (num(orig.made[p]) - num(orig.loss[p]));
+      });
+      return [p, total];
+    }).filter(([, t]) => t);
+    $('week-totals').replaceChildren(...(rows.length
+      ? rows.map(([p, t]) => el('tr', {}, el('td', {}, p), el('td', { class: 'num' }, String(t))))
+      : [el('tr', {}, el('td', { class: 'muted' }, 'No production entered this week yet.'))]));
+  }
+
+  function editDay(day, kind, product, value) {
+    if (!state.edits[day.date]) state.edits[day.date] = { made: Object.assign({}, day.made), loss: Object.assign({}, day.loss) };
+    const n = Math.abs(num(value));
+    if (n) state.edits[day.date][kind][product] = n;
+    else delete state.edits[day.date][kind][product];
+    // Update summary/totals without re-rendering inputs (keeps focus while typing).
+    const card = $('days').children[state.week.days.indexOf(day)];
+    card.classList.add('dirty');
+    const vals = state.edits[day.date];
+    const made = sumMap(vals.made), loss = sumMap(vals.loss);
+    card.querySelector('.day-head .muted').textContent =
+      (made || loss ? made + ' made' + (loss ? ' · ' + loss + ' loss' : '') : 'nothing entered') + ' ▴';
+    renderWeekTotals();
+    $('savebar').hidden = false;
+  }
+
+  async function saveWeek() {
+    const days = Object.keys(state.edits).map(date => ({ date, made: state.edits[date].made, loss: state.edits[date].loss }));
+    state.week = await run('saveProductionWeek', state.week.monday, days);
+    state.edits = {};
+    renderWeek();
+    toast('Production saved.');
+  }
+
+  $('week-save').addEventListener('click', e => busy(e.target, 'Saving…', saveWeek));
+  $('week-prev').addEventListener('click', () => loadWeek(addDays(state.week.monday, -7)));
+  $('week-next').addEventListener('click', () => loadWeek(addDays(state.week.monday, 7)));
+  $('week-today').addEventListener('click', () => loadWeek(state.app.productionMonday));
+  $('week-invoice').addEventListener('click', e => busy(e.target, 'Loading…', async () => {
+    if (hasEdits()) await saveWeek();
+    await fillFromWeek(state.week.monday);
+    showView('invoice');
+  }));
+
+  window.addEventListener('beforeunload', e => {
+    if (hasEdits()) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  // ---------- invoice form ----------
+
+  function blankInvoice() {
+    return {
+      number: '', date: state.app.today, weekOf: '', customer: '', email: '', goods: '', notes: '',
+      fees: '', items: [{ product: '', qty: '', unitPrice: '' }], rememberPrices: [],
+    };
+  }
+
+  function newInvoice() {
+    state.invoice = blankInvoice();
+    renderInvoice();
+    setBanner();
+  }
+
+  function setBanner(kind, ...content) {
+    $('inv-banner').replaceChildren(kind ? el('div', { class: 'banner ' + kind }, ...content) : '');
+  }
+
+  function renderInvoice() {
+    const inv = state.invoice;
+    $('inv-number').textContent = inv.number || 'new — assigned on save';
+    $('inv-date').value = inv.date;
+    $('inv-week').value = inv.weekOf || '';
+    $('inv-week-label').textContent = inv.weekOf ? 'Monday–Saturday, ' + dayLabel(inv.weekOf) + ' – ' + dayLabel(addDays(inv.weekOf, 5)) : '';
+    $('inv-customer').value = inv.customer;
+    $('inv-email').value = inv.email;
+    $('inv-goods').value = inv.goods;
+    $('inv-notes').value = inv.notes;
+    $('inv-fees').value = inv.fees || '';
+    renderItems();
+  }
+
+  function renderItems() {
+    const inv = state.invoice;
+    $('inv-items').replaceChildren(...inv.items.map((item, index) => {
+      const saved = state.app.prices[item.product];
+      const hasSaved = saved !== undefined;
+      const lineTotal = el('span', { class: 'line-total' }, money(cents(item.unitPrice) * num(item.qty) / 100));
+      const note = el('div', { class: 'price-note' });
+      const updateNote = () => {
+        const s = state.app.prices[item.product];
+        note.replaceChildren();
+        if (!item.product || item.unitPrice === '' || item.unitPrice === undefined) return;
+        if (s === undefined) {
+          note.append('New product price — it will be remembered for next time.');
+        } else if (cents(s) !== cents(item.unitPrice)) {
+          const checked = inv.rememberPrices.indexOf(item.product) !== -1;
+          note.append(el('label', {},
+            el('input', {
+              type: 'checkbox', checked: checked,
+              onchange: e => {
+                inv.rememberPrices = inv.rememberPrices.filter(p => p !== item.product);
+                if (e.target.checked) inv.rememberPrices.push(item.product);
+              },
+            }),
+            'Use ' + money(item.unitPrice) + ' as the saved price for ' + item.product + ' (was ' + money(s) + ')'));
+        }
+      };
+      const priceInput = el('input', {
+        type: 'number', step: '0.01', inputmode: 'decimal', 'aria-label': 'Unit cost',
+        value: item.unitPrice === '' || item.unitPrice === undefined || isNaN(Number(item.unitPrice)) ? (item.unitPrice || '') : Number(item.unitPrice).toFixed(2),
+        placeholder: hasSaved ? '' : '2.50',
+        oninput: e => { item.unitPrice = e.target.value; refresh(); },
+      });
+      const refresh = () => {
+        lineTotal.textContent = money(cents(item.unitPrice) * num(item.qty) / 100);
+        updateNote();
+        renderTotals();
+      };
+      updateNote();
+      return el('div', { class: 'item' },
+        el('input', {
+          type: 'text', class: 'product', list: 'product-list', autocomplete: 'off',
+          placeholder: 'Product', value: item.product, 'aria-label': 'Product',
+          onchange: e => {
+            item.product = e.target.value.trim();
+            const p = state.app.prices[item.product];
+            if (p !== undefined && (item.unitPrice === '' || item.unitPrice === undefined)) {
+              item.unitPrice = p;
+              priceInput.value = p;
+            }
+            priceInput.placeholder = p === undefined ? '2.50' : '';
+            refresh();
+          },
+        }),
+        el('label', { class: 'mini' }, el('span', {}, 'Unit cost'), priceInput),
+        el('label', { class: 'mini' }, el('span', {}, 'Qty'), el('input', {
+          type: 'number', step: '1', inputmode: 'numeric', 'aria-label': 'Quantity', placeholder: 'Qty',
+          value: item.qty === '' ? '' : item.qty,
+          oninput: e => { item.qty = e.target.value; refresh(); },
+        })),
+        el('div', { class: 'mini total' }, el('span', {}, 'Line total'), lineTotal),
+        el('button', {
+          class: 'icon-btn', 'aria-label': 'Remove line', title: 'Remove line',
+          onclick: () => { inv.items.splice(index, 1); if (!inv.items.length) inv.items.push({ product: '', qty: '', unitPrice: '' }); renderItems(); },
+        }, '×'),
+        note);
+    }));
+    renderTotals();
+  }
+
+  function renderTotals() {
+    const inv = state.invoice;
+    const sub = inv.items.reduce((s, i) => s + Math.round(cents(i.unitPrice) * num(i.qty)), 0);
+    $('inv-subtotal').textContent = money(sub / 100);
+    $('inv-total').textContent = money((sub + cents(inv.fees)) / 100);
+  }
+
+  function collectInvoice() {
+    const inv = state.invoice;
+    inv.date = $('inv-date').value;
+    inv.weekOf = $('inv-week').value ? mondayOf($('inv-week').value) : '';
+    inv.customer = $('inv-customer').value.trim();
+    inv.email = $('inv-email').value.trim();
+    inv.goods = $('inv-goods').value.trim();
+    inv.notes = $('inv-notes').value;
+    inv.fees = $('inv-fees').value;
+    return Object.assign({}, inv, { items: inv.items.filter(i => i.product || num(i.qty)) });
+  }
+
+  $('inv-customer').addEventListener('change', e => {
+    const c = state.app.customers.find(x => x.name.toLowerCase() === e.target.value.trim().toLowerCase());
+    if (!c) return;
+    e.target.value = c.name;
+    if (c.email && !$('inv-email').value) $('inv-email').value = c.email;
+    if (c.goods && !$('inv-goods').value) $('inv-goods').value = c.goods;
+  });
+  $('inv-fees').addEventListener('input', e => { state.invoice.fees = e.target.value; renderTotals(); });
+  $('inv-add-item').addEventListener('click', () => {
+    state.invoice.items.push({ product: '', qty: '', unitPrice: '' });
+    renderItems();
+    const inputs = $('inv-items').querySelectorAll('.product');
+    inputs[inputs.length - 1].focus();
+  });
+  $('inv-new').addEventListener('click', () => {
+    if (confirm('Clear the form and start a new invoice?')) newInvoice();
+  });
+  $('inv-clear-week').addEventListener('click', () => {
+    $('inv-week').value = '';
+    state.invoice.weekOf = '';
+    $('inv-week-label').textContent = '';
+  });
+  $('inv-load-week').addEventListener('click', e => busy(e.target, 'Loading…', async () => {
+    const picked = $('inv-week').value || state.app.invoiceMonday;
+    await fillFromWeek(mondayOf(picked));
+  }));
+
+  async function fillFromWeek(monday) {
+    const inv = await run('buildWeeklyInvoice', monday);
+    inv.rememberPrices = [];
+    if (!inv.items.length) inv.items = [{ product: '', qty: '', unitPrice: '' }];
+    state.invoice = inv;
+    renderInvoice();
+    if (inv.existingNumber) {
+      setBanner('warn', 'This week was already invoiced as ', el('b', {}, inv.existingNumber), '. ',
+        el('a', { href: '#', onclick: e => { e.preventDefault(); openInvoice(inv.existingNumber); } }, 'Open it instead'));
+    } else if (!inv.items.some(i => i.product)) {
+      setBanner('warn', 'No production entered for ' + inv.weekLabel + ' yet.');
+    } else {
+      setBanner('ok', 'Filled from production for ' + inv.weekLabel + '. Check the quantities and prices, then save.');
+    }
+  }
+
+  async function openInvoice(number) {
+    const inv = await run('getInvoice', number);
+    inv.rememberPrices = [];
+    inv.fees = inv.fees || '';
+    if (!inv.items.length) inv.items = [{ product: '', qty: '', unitPrice: '' }];
+    state.invoice = inv;
+    renderInvoice();
+    setBanner('ok', 'Editing invoice ' + number + (inv.status ? ' (' + inv.status + ')' : '') + '. Saving updates it in place.',
+      inv.pdfUrl ? el('div', { class: 'links' }, el('a', { href: inv.pdfUrl, target: '_blank' }, 'Current PDF')) : '');
+    showView('invoice');
+  }
+
+  async function duplicateInvoice(number) {
+    const inv = await run('getInvoice', number);
+    state.invoice = Object.assign(blankInvoice(), {
+      customer: inv.customer, email: inv.email, goods: inv.goods, notes: inv.notes, fees: inv.fees || '',
+      items: inv.items.length ? inv.items : [{ product: '', qty: '', unitPrice: '' }],
+    });
+    renderInvoice();
+    setBanner('ok', 'Copied from ' + number + '. This will be saved as a new invoice.');
+    showView('invoice');
+  }
+
+  /** Save, handling the "week already invoiced" guard. Returns the server result or null. */
+  async function saveWith(fn) {
+    const inv = collectInvoice();
+    try {
+      return await run(fn, inv);
+    } catch (err) {
+      const m = errorMessage(err).match(/DUPLICATE_WEEK:(\S+)/);
+      if (!m) throw err;
+      if (confirm('This week was already invoiced as ' + m[1] + '. Open that invoice instead?\n\n(Cancel to save a second invoice for the same week.)')) {
+        await openInvoice(m[1]);
+        return null;
+      }
+      return await run(fn, Object.assign(inv, { allowDuplicateWeek: true }));
+    }
+  }
+
+  $('inv-save').addEventListener('click', e => busy(e.target, 'Saving…', async () => {
+    const result = await saveWith('saveInvoice');
+    if (!result) return;
+    state.invoice.number = result.number;
+    state.invoice.rememberPrices = [];
+    await refreshAppData();
+    renderInvoice();
+    setBanner('ok', 'Saved invoice ', el('b', {}, result.number), ' (' + money(result.total) + ') to the accounting sheet.');
+  }));
+
+  $('inv-draft').addEventListener('click', e => busy(e.target, 'Saving & drafting…', async () => {
+    if (!$('inv-email').value.trim()) {
+      $('inv-email').focus();
+      throw new Error('Add the customer\'s email address first.');
+    }
+    const result = await saveWith('saveAndDraftInvoice');
+    if (!result) return;
+    state.invoice.number = result.number;
+    state.invoice.rememberPrices = [];
+    await refreshAppData();
+    renderInvoice();
+    if (result.draftError) {
+      setBanner('error', 'Saved invoice ', el('b', {}, result.number), ', but the draft failed: ' + result.draftError);
+      return;
+    }
+    setBanner('ok',
+      'Saved invoice ', el('b', {}, result.number), ' and created a Gmail draft with the PDF attached.',
+      result.fromBusiness ? '' : el('div', { class: 'small' },
+        'The draft is from ' + result.from + ' (replies go to ' + state.app.businessEmail + '). To send from ' +
+        state.app.businessEmail + ', add it under Gmail → Settings → Accounts → "Send mail as".'),
+      el('div', { class: 'links' },
+        el('a', { class: 'btn primary', href: result.draftUrl, target: '_blank' }, 'Open draft in Gmail'),
+        el('a', { class: 'btn', href: result.pdfUrl, target: '_blank' }, 'View PDF')));
+    window.scrollTo(0, 0);
+  }));
+
+  $('inv-preview').addEventListener('click', e => busy(e.target, 'Rendering…', async () => {
+    const html = await run('previewInvoiceHtml', collectInvoice());
+    $('preview-frame').srcdoc = html;
+    $('preview').hidden = false;
+  }));
+  $('preview-close').addEventListener('click', () => { $('preview').hidden = true; });
+
+  // ---------- history ----------
+
+  async function loadHistory() {
+    $('hist-list').replaceChildren(el('div', { class: 'loading' }, el('div', { class: 'spinner' }), 'Loading…'));
+    let list;
+    try {
+      list = await run('listInvoices', 30);
+    } catch (err) {
+      $('hist-list').replaceChildren(el('div', { class: 'banner error' }, errorMessage(err)));
+      return;
+    }
+    if (!list.length) {
+      $('hist-list').replaceChildren(el('p', { class: 'muted' }, 'No invoices yet.'));
+      return;
+    }
+    $('hist-list').replaceChildren(...list.map(inv => {
+      const acts = [];
+      if (inv.number) {
+        acts.push(el('button', { class: 'btn', onclick: e => busy(e.target, 'Opening…', () => openInvoice(inv.number)) }, 'Open'));
+        acts.push(el('button', { class: 'btn ghost', onclick: e => busy(e.target, 'Copying…', () => duplicateInvoice(inv.number)) }, 'Duplicate'));
+        if (inv.pdfUrl) acts.push(el('a', { class: 'btn ghost', href: inv.pdfUrl, target: '_blank' }, 'PDF'));
+        const select = el('select', {
+          'aria-label': 'Status',
+          onchange: async e => {
+            try {
+              await run('setInvoiceStatus', inv.number, e.target.value);
+              toast(inv.number + ' marked ' + e.target.value + '.');
+              loadHistory();
+            } catch (err) { toast(errorMessage(err), true); }
+          },
+        }, ['saved', 'drafted', 'sent', 'paid'].map(s => el('option', { value: s, selected: s === inv.status }, s)));
+        acts.push(select);
+      } else {
+        acts.push(el('span', { class: 'muted small' }, 'Entered before the app (no line items)'));
+      }
+      return el('div', { class: 'hist-row' },
+        el('div', {},
+          el('div', { class: 'who' }, inv.customer || '—'),
+          el('div', { class: 'muted small' },
+            [inv.date ? dayLabel(inv.date).slice(4) + '/' + inv.date.slice(0, 4) : 'no date', inv.number, inv.goods].filter(Boolean).join(' · '),
+            inv.status ? ' ' : '', inv.status ? el('span', { class: 'pill ' + inv.status }, inv.status) : '')),
+        el('div', { class: 'amt' }, money(inv.amount)),
+        el('div', { class: 'acts' }, acts));
+    }));
+  }
+  $('hist-refresh').addEventListener('click', loadHistory);
+
+  init();
+</script>

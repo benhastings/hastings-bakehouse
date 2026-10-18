@@ -1,0 +1,11 @@
+{
+  "name": "hastings-bakehouse",
+  "private": true,
+  "description": "Production + invoicing web app for Hastings Bakehouse (Google Apps Script)",
+  "scripts": {
+    "test": "node --test tests/",
+    "dev": "node tools/dev-server.js",
+    "push": "clasp push --force",
+    "deploy": "npm test && clasp push --force && clasp deploy -i $(cat .deployment-id) -d \"$(git log -1 --format=%h)\""
+  }
+}

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+  <?!= include_('Styles') ?>
+</head>
+<body>
+  <header class="topbar">
+    <img src="<?!= LOGO_DATA_URI ?>" alt="">
+    <span class="brand">Hastings Bakehouse</span>
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" data-view="production" aria-selected="true">Production</button>
+      <button class="tab" role="tab" data-view="invoice" aria-selected="false">Invoice</button>
+      <button class="tab" role="tab" data-view="history" aria-selected="false">History</button>
+    </nav>
+  </header>
+
+  <main>
+    <div id="loading" class="loading"><div class="spinner"></div>Loading…</div>
+
+    <!-- First run: the sheet needs the new tabs/columns -->
+    <section id="setup" class="card" hidden>
+      <h2>One-time setup</h2>
+      <p>The accounting sheet needs a few additions before the app can use it. Nothing existing is changed or removed:</p>
+      <ul>
+        <li><b>Invoices</b> tab: new columns to the right — Invoice #, Status, Week Of, Fees, Email, PDF Link, Draft Id, Updated At</li>
+        <li>New tabs: <b>Invoice Items</b>, <b>Prices</b>, <b>Customers</b>, <b>Settings</b></li>
+        <li>A Drive folder for invoice PDFs, shared with everyone who can edit the sheet</li>
+      </ul>
+      <button class="btn primary" id="run-setup">Set up sheet</button>
+      <div id="setup-result"></div>
+    </section>
+
+    <!-- Production week view -->
+    <section id="view-production" hidden>
+      <div class="weeknav">
+        <button class="icon-btn" id="week-prev" aria-label="Previous week">◀</button>
+        <h2 id="week-label"></h2>
+        <button class="icon-btn" id="week-next" aria-label="Next week">▶</button>
+      </div>
+      <p class="muted small" style="text-align:center;margin-top:-4px">
+        <button class="btn ghost small" id="week-today">Jump to this week</button>
+      </p>
+      <div id="days" class="days"></div>
+      <div class="card totals" style="margin-top:12px">
+        <h2 style="font-size:17px">Week total <span class="muted small">(made − loss/damage)</span></h2>
+        <table><tbody id="week-totals"></tbody></table>
+        <div class="actions">
+          <button class="btn primary" id="week-invoice">Create invoice for this week →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Invoice form -->
+    <section id="view-invoice" hidden>
+      <div id="inv-banner"></div>
+      <div class="paper">
+        <div class="inv-header">
+          <img src="<?!= LOGO_DATA_URI ?>" alt="Hastings Bakehouse">
+          <div class="inv-meta">
+            <h1>Invoice</h1>
+            <div>Invoice #: <span class="num" id="inv-number">new</span></div>
+            <label class="field">Date<input type="date" id="inv-date"></label>
+          </div>
+        </div>
+
+        <div class="section-title">Weekly invoice</div>
+        <div class="weekrow">
+          <label class="field">Week of (Monday)<input type="date" id="inv-week"></label>
+          <button class="btn" id="inv-load-week">Fill from production</button>
+          <button class="btn ghost" id="inv-clear-week">Not a weekly invoice</button>
+        </div>
+        <p class="muted small" id="inv-week-label"></p>
+
+        <div class="section-title">Customer details</div>
+        <div class="grid2">
+          <label class="field">Name / Company<input type="text" id="inv-customer" list="customer-list" autocomplete="off" placeholder="Customer name"></label>
+          <label class="field">Email address<input type="email" id="inv-email" placeholder="customer@example.com"></label>
+          <label class="field">Goods (accounting category)<input type="text" id="inv-goods" list="goods-list" autocomplete="off" placeholder="e.g. Coffee Shop"></label>
+        </div>
+
+        <div class="section-title">Order details</div>
+        <div class="items-head"><span>Product</span><span>Unit cost</span><span>Qty</span><span>Line total</span><span></span></div>
+        <div id="inv-items"></div>
+        <button class="btn ghost" id="inv-add-item">+ Add line</button>
+
+        <div class="totals-box">
+          <div class="totals-row"><span>Subtotal</span><span id="inv-subtotal">$0.00</span></div>
+          <div class="totals-row"><span>Delivery / Fees</span><input type="number" id="inv-fees" step="0.01" inputmode="decimal" placeholder="0.00"></div>
+          <div class="totals-row grand"><span>Total due</span><span id="inv-total">$0.00</span></div>
+        </div>
+
+        <div class="section-title">Additional instructions</div>
+        <textarea id="inv-notes" rows="3" placeholder="Notes, terms, or delivery instructions (also saved to the Notes column)"></textarea>
+
+        <div class="inv-actions">
+          <button class="btn ghost" id="inv-new">Start new</button>
+          <button class="btn" id="inv-preview">Preview</button>
+          <button class="btn" id="inv-save">Save</button>
+          <button class="btn primary" id="inv-draft">Save &amp; create Gmail draft</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- History -->
+    <section id="view-history" hidden>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <h2>Recent invoices</h2>
+          <button class="btn ghost" id="hist-refresh">Refresh</button>
+        </div>
+        <div id="hist-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="savebar" class="savebar" hidden>
+    <span>Unsaved production changes</span>
+    <button class="btn primary" id="week-save">Save</button>
+  </div>
+
+  <div id="preview" class="modal" hidden>
+    <div class="bar"><button class="btn primary" id="preview-close">Close preview</button></div>
+    <iframe id="preview-frame" title="Invoice preview"></iframe>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <datalist id="customer-list"></datalist>
+  <datalist id="goods-list"></datalist>
+  <datalist id="product-list"></datalist>
+
+  <?!= include_('Client') ?>
+</body>
+</html>
