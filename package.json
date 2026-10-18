@@ -5,7 +5,7 @@
   "scripts": {
     "test": "node --test tests/",
     "dev": "node tools/dev-server.js",
-    "push": "clasp push",
-    "deploy": "clasp push && clasp deploy --description \"$(git log -1 --format=%h)\""
+    "push": "clasp push --force",
+    "deploy": "npm test && clasp push --force && clasp deploy -i $(cat .deployment-id) -d \"$(git log -1 --format=%h)\""
   }
 }
