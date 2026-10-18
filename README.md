@@ -66,12 +66,12 @@ Production columns are read from the `Production` header row, so adding a produc
 ## Updating
 
 ```sh
-npm test                                    # local tests, no Google account needed
-npm run push                                # upload the code
-clasp deploy -i <deploymentId> -d "what changed"   # update the existing URL (clasp deployments lists IDs)
+npm run deploy    # runs the tests, pushes, and updates the existing deployment
 ```
 
-Using `-i <deploymentId>` keeps the same URL, so home-screen shortcuts keep working.
+`npm run deploy` reads the deployment ID from `.deployment-id` (gitignored; `clasp deployments` lists IDs). Updating the
+existing deployment keeps the same URL, so home-screen shortcuts keep working. Use `npm run push` to upload without deploying;
+the editor's **Deploy → Test deployments** URL always runs the latest pushed code.
 
 ## Developing locally
 
