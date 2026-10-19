@@ -112,13 +112,17 @@ invoice-form.html   original static invoice page (GitHub Pages, noindex), to be 
 
 ## Website
 
-`index.html` is the public site, served by GitHub Pages from `main`. It is plain HTML and CSS with one small script
-that loads each photo as it nears the screen. There is no build step.
+The public site is served by GitHub Pages from `main`: a home page (`index.html`) and four section pages, each an
+`index.html` in its own folder (`floral-bouquets/`, `wedding-cakes/`, `celebration-cakes/`, `coffee-house-treats/`).
+It is plain HTML with one shared stylesheet (`css/site.css`) and one small script (`js/site.js`) that loads each photo
+as it nears the screen and drives the featured-post row. There is no build step, so the header, footer and contact
+block are repeated in each page; change them in all five.
 
 - **Photos**: never commit camera originals. They carry GPS location in their EXIF data. Export web copies with the metadata stripped:
   `magick original.jpeg -auto-orient -resize 1800x -strip -quality 74 img/name-1800.jpg`, plus a `-900` size, and
-  `.webp` versions of both (`magick img/name-1800.jpg -quality 70 img/name-1800.webp`).
+  `.webp` versions of both (`magick img/name-1800.jpg -quality 70 img/name-1800.webp`). Tiles, galleries and the
+  featured-post row use 600px squares: `magick original.jpeg -auto-orient -gravity center -resize 600x600^ -extent 600x600 -strip -quality 76 img/sq-name.jpg`, plus `.webp`.
 - **Fonts**: Cormorant Garamond and Jost (SIL Open Font License), Latin subset, served from `fonts/`.
-- **URLs**: the canonical link, Open Graph tags, JSON-LD, `robots.txt` and `sitemap.xml` all use
+- **URLs**: the canonical link, Open Graph tags, JSON-LD, `robots.txt` and `sitemap.xml` on every page all use
   `https://benhastings.github.io/hastings-bakehouse/`. When `hastingsbakehouse.com` moves to GitHub Pages, update them
   all and change the absolute links in `404.html`.
