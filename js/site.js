@@ -36,3 +36,65 @@
     update();
   });
 })();
+
+// Gallery: show the first twelve with a button for the rest, and open any photo in a full-screen viewer.
+// Without the script every photo shows and each link opens the large image.
+(function () {
+  document.querySelectorAll('[data-gallery]').forEach(function (list) {
+    var section = list.closest('section');
+    var more = section.querySelector('[data-more]');
+    if (more && list.querySelector('.is-extra')) {
+      list.classList.add('is-collapsed');
+      more.hidden = false;
+      more.addEventListener('click', function () {
+        list.classList.remove('is-collapsed');
+        more.hidden = true;
+        var first = list.querySelector('.is-extra a');
+        if (first) first.focus();
+      });
+    }
+
+    var box = document.querySelector('.lightbox');
+    if (!box || typeof box.showModal !== 'function') return;
+    var img = box.querySelector('img');
+    var cap = box.querySelector('figcaption');
+    var links = Array.prototype.slice.call(list.querySelectorAll('.shot'));
+    var at = 0;
+
+    function show(i) {
+      at = (i + links.length) % links.length;
+      var link = links[at];
+      img.src = link.getAttribute('href').replace(/\.jpg$/, '.webp');
+      img.alt = link.querySelector('img').alt;
+      cap.textContent = link.closest('figure').querySelector('figcaption').textContent;
+      // Fetch the neighbours so stepping through feels instant.
+      [at + 1, at - 1].forEach(function (n) {
+        var l = links[(n + links.length) % links.length];
+        new Image().src = l.getAttribute('href').replace(/\.jpg$/, '.webp');
+      });
+    }
+    links.forEach(function (link, i) {
+      link.addEventListener('click', function (e) {
+        e.preventDefault();
+        show(i);
+        box.showModal();
+      });
+    });
+    box.querySelector('.lightbox__prev').addEventListener('click', function () { show(at - 1); });
+    box.querySelector('.lightbox__next').addEventListener('click', function () { show(at + 1); });
+    box.querySelector('.lightbox__close').addEventListener('click', function () { box.close(); });
+    box.addEventListener('click', function (e) { if (e.target === box || e.target.tagName === 'FIGURE') box.close(); });
+    box.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowLeft') show(at - 1);
+      if (e.key === 'ArrowRight') show(at + 1);
+    });
+    var x0 = null;
+    box.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; }, { passive: true });
+    box.addEventListener('touchend', function (e) {
+      if (x0 === null) return;
+      var dx = e.changedTouches[0].clientX - x0;
+      if (Math.abs(dx) > 50) show(dx < 0 ? at + 1 : at - 1);
+      x0 = null;
+    });
+  });
+})();

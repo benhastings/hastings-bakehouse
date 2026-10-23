@@ -3,3 +3,6 @@
 node_modules/
 *.pdf
 .deployment-id
+
+# Camera originals dropped in for processing; only stripped copies in img/ are committed.
+/celebrationcakes_img/

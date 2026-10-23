@@ -122,6 +122,8 @@ block are repeated in each page; change them in all five.
   `magick original.jpeg -auto-orient -resize 1800x -strip -quality 74 img/name-1800.jpg`, plus a `-900` size, and
   `.webp` versions of both (`magick img/name-1800.jpg -quality 70 img/name-1800.webp`). Tiles, galleries and the
   featured-post row use 600px squares: `magick original.jpeg -auto-orient -gravity center -resize 600x600^ -extent 600x600 -strip -quality 76 img/sq-name.jpg`, plus `.webp`.
+  Phone photos that are only ~960px wide (like the celebration cakes, `img/cc-*`) are exported at 960 and 600 wide
+  and shown three across in a photo band (`.tri`) so they stay sharp on wide screens.
 - **Fonts**: Cormorant Garamond and Jost (SIL Open Font License), Latin subset, served from `fonts/`.
 - **URLs**: the canonical link, Open Graph tags, JSON-LD, `robots.txt` and `sitemap.xml` on every page all use
   `https://benhastings.github.io/hastings-bakehouse/`. When `hastingsbakehouse.com` moves to GitHub Pages, update them
