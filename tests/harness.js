@@ -115,17 +115,14 @@ function iterator(list) {
   return { hasNext: () => i < list.length, next: () => list[i++] };
 }
 
-let nextId = 1;
-const newId = prefix => prefix + String(nextId++).padStart(28, '0');
-
 class FakeFolder {
-  constructor(name) { this.id = newId('folder'); this.name = name; this.folders = []; this.files = []; this.editors = []; }
+  constructor(name) { this.name = name; this.folders = []; this.files = []; this.editors = []; }
   getId() { return this.id; }
   getName() { return this.name; }
   createFolder(name) { const f = new FakeFolder(name); this.folders.push(f); this.drive.register(f); return f; }
   getFoldersByName(name) { return iterator(this.folders.filter(f => f.name === name)); }
   createFile(blob) {
-    const id = newId('file');
+    const id = this.drive.newId('file');
     const file = { id, blob, trashed: false, name: blob.getName(), getId: () => id, getUrl: () => 'https://drive.google.com/file/d/' + id + '/view', setTrashed(t) { this.trashed = t; } };
     this.files.push(file);
     this.drive.files[id] = file;
@@ -139,7 +136,10 @@ function makeServices(tabs, options) {
   const drive = {
     folders: {},
     files: {},
-    register(f) { f.drive = drive; this.folders[f.id] = f; return f; },
+    // IDs count up per fake Drive, so replaying the same steps gives the same IDs.
+    nextId: 1,
+    newId(prefix) { return prefix + String(this.nextId++).padStart(28, '0'); },
+    register(f) { f.drive = drive; f.id = drive.newId('folder'); this.folders[f.id] = f; return f; },
   };
   const rootParent = drive.register(new FakeFolder('Bakehouse'));
   const gmail = { drafts: [], aliases: (options && options.aliases) || [] };
@@ -222,7 +222,8 @@ const escapeHtml = v => String(v === undefined || v === null ? '' : v)
 function loadApp(tabs, options) {
   const opts = Object.assign({}, options, { today: (options && options.today) || '2026-10-08' });
   const services = makeServices(tabs, opts);
-  const fixedNow = new Date(opts.today + 'T15:00:00Z').getTime();
+  // "Now" is 3pm UTC (10–11am Eastern) on the chosen day; setToday() moves it.
+  let fixedNow = new Date(opts.today + 'T15:00:00Z').getTime();
   class FixedDate extends Date {
     constructor(...args) { if (args.length) super(...args); else super(fixedNow); }
     static now() { return fixedNow; }
@@ -252,7 +253,8 @@ function loadApp(tabs, options) {
   // Expose top-level function and const bindings on a single object for tests.
   const names = Array.from(source.matchAll(/^(?:function\s+(\w+)|const\s+(\w+)\s*=)/gm)).map(m => m[1] || m[2]);
   vm.runInContext(source + '\n;globalThis.__app = {' + names.join(',') + '};', context, { filename: 'apps-script' });
-  return Object.assign({ app: context.__app, context }, services);
+  const setToday = iso => { fixedNow = new Date(iso + 'T15:00:00Z').getTime(); };
+  return Object.assign({ app: context.__app, context, setToday }, services);
 }
 
 /** A sheet shaped like the real one (row 1 blank, headers on row 2), with made-up data. */
@@ -280,4 +282,10 @@ function sampleTabs() {
   };
 }
 
-module.exports = { loadApp, sampleTabs, sheetDate, formatIso, compileTemplate, escapeHtml, TZ };
+/** The same sheet with headers only: what a fresh copy of the real sheet looks like with its rows cleared. */
+function blankTabs() {
+  const tabs = sampleTabs();
+  return { Invoices: tabs.Invoices.slice(0, 2), Production: tabs.Production.slice(0, 2), Expenses: [] };
+}
+
+module.exports = { loadApp, sampleTabs, blankTabs, sheetDate, formatIso, compileTemplate, escapeHtml, TZ };

@@ -3,3 +3,10 @@
 node_modules/
 *.pdf
 .deployment-id
+
+# Local sandbox state and the stage 2 sandbox project file.
+.sandbox/
+.clasp.sandbox.json
+
+# Camera originals dropped in for processing; only stripped copies in img/ are committed.
+/celebrationcakes_img/
