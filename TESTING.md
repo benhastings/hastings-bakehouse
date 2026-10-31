@@ -29,6 +29,11 @@ npm run sandbox -- --start=blank   # start over from an empty sheet (sample | se
 
 The sample sheet is made up: past Demarest, Smith and Jones invoices and a few weeks of production.
 
+**Online preview, no computer setup:** https://benhastings.github.io/bakehouse-app-preview/ is the same sandbox running
+entirely in the browser, so it works on any phone. The strip on top links to its inspector. Whatever you enter stays in
+that browser (each phone has its own copy); the inspector's Reset starts it over. Update it with `npm run demo:publish`
+after changing the app.
+
 ### Checklist
 
 Work through these on a computer first, then on a phone with `--lan`. Write down anything confusing or wrong (a note,
@@ -81,7 +86,8 @@ a screenshot, or a GitHub issue) and we fix it in the sandbox before stage 2.
 - [ ] Type letters or negative numbers where quantities go. Nothing strange reaches the sheet.
 
 **H. Both of you, on phones**
-- [ ] Run with `--lan`, open the printed address on each phone. Is everything reachable with a thumb? Is anything too small?
+- [ ] Open the online preview (or run with `--lan` and open the printed address) on each phone. Is everything reachable
+      with a thumb? Is anything too small?
 
 ## Stage 2: Practice sheet in Google
 

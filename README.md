@@ -82,11 +82,18 @@ real one.
 npm test                 # unit + integration tests against an in-memory copy of the sheet
 npm run sandbox          # http://localhost:8787 runs the real UI and server code on sample data; /_inspect shows the result
 npm run dev -- --setup --today=2026-10-11   # same, but nothing is saved between runs
+npm run demo:publish     # the sandbox as a static site: https://benhastings.github.io/bakehouse-app-preview/
 ```
 
-`tests/harness.js` loads the Apps Script files into Node with fake `SpreadsheetApp`, `DriveApp`, `GmailApp`, and so on. The
-sandbox (`tools/sandbox.js`, served by `tools/dev-server.js`) uses the same fakes, so nothing touches the real sheet. It logs
-each change and replays the log on start, which is how it survives restarts and supports undo.
+`tests/fakes.js` has fake `SpreadsheetApp`, `DriveApp`, `GmailApp`, and so on; `tests/harness.js` loads the Apps Script
+files into Node with them. The sandbox (`tools/sandbox-core.js`, served by `tools/dev-server.js`) uses the same fakes, so
+nothing touches the real sheet. It logs each change and replays the log on start, which is how it survives restarts and
+supports undo.
+
+The online preview is the same sandbox running in the browser instead of on a server: `tools/build-demo.js` bundles the
+fakes, the sandbox, the inspector and the Apps Script files into `.demo/`, and `--publish` force-pushes that to the
+[bakehouse-app-preview](https://github.com/benhastings/bakehouse-app-preview) repo, which GitHub Pages serves. Each
+visitor's changes stay in their own browser. That repo only holds the latest build; edit here, not there.
 
 The PDF is rendered by Google's HTML-to-PDF converter, which only supports simple CSS (tables, no flexbox, no web fonts), so
 `InvoicePrint.html` sticks to those. Check a real PDF after changing it.
@@ -107,7 +114,7 @@ apps-script/        deployed to Apps Script by clasp
   Index.html, Styles.html, Client.html   the app UI
   InvoicePrint.html invoice PDF template
 tests/              node --test suites + fake Google services
-tools/              sandbox + its server, practice-sheet builder, logo builder
+tools/              sandbox + its server, online preview builder, practice-sheet builder, logo builder
 TESTING.md          test plan: sandbox → practice sheet → real sheet
 index.html          public landing page (GitHub Pages)
 img/, fonts/        site images (EXIF stripped) and self-hosted fonts
