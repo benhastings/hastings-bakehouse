@@ -95,8 +95,9 @@ fakes, the sandbox, the inspector and the Apps Script files into `.demo/`, and `
 [bakehouse-app-preview](https://github.com/benhastings/bakehouse-app-preview) repo, which GitHub Pages serves. Each
 visitor's changes stay in their own browser. That repo only holds the latest build; edit here, not there.
 
-The PDF is rendered by Google's HTML-to-PDF converter, which only supports simple CSS (tables, no flexbox, no web fonts), so
-`InvoicePrint.html` sticks to those. Check a real PDF after changing it.
+The PDF is the print view of `invoice-form.html` (what used to be printed to PDF by hand), rebuilt in `InvoicePrint.html`.
+Google's HTML-to-PDF converter renders it, and only supports simple CSS (tables, no flexbox, maybe no web fonts), so the
+template sticks to those and falls back to Georgia. Check a real PDF after changing it.
 
 `apps-script/Logo.js` is generated from `bakehouse.png` by `tools/build-logo.sh`.
 

@@ -299,9 +299,10 @@ test('invoice HTML escapes content and shows week, fees and notes', () => {
   });
   assert.match(html, /Smith &amp; &lt;Co&gt;/);
   assert.match(html, /\(assigned on save\)/);
-  assert.match(html, /Week of:<\/span> Sep 28 – Oct 3, 2026/);
-  assert.match(html, /Delivery \/ Fees<\/td><td class="n">\$5\.00/);
-  assert.match(html, /Total due<\/td><td class="n">\$10\.00/);
+  assert.match(html, /Week of:<\/td><td class="value">Sep 28 – Oct 3, 2026/);
+  assert.match(html, /<td>Muffin<\/td><td>\$2\.50<\/td><td>2<\/td><td>\$5\.00<\/td>/);
+  assert.match(html, /Delivery \/ Fees:<\/td><td class="amount">\$5\.00/);
+  assert.match(html, /Total Due:<\/td><td class="amount">\$10\.00/);
   assert.match(html, /Leave at back door/);
   assert.match(html, /src="data:image\/png;base64,/);
 });
