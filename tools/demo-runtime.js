@@ -94,7 +94,7 @@
 
   function showFile() {
     const file = sandbox.env.drive.files[location.hash.slice(1)];
-    if (file) showDocument(file.blob.content);
+    if (file) showDocument(BakehouseInspector.asPdfPage(file.blob.content));
     else document.body.textContent = 'That file isn’t in this browser’s copy of the demo (it may have been reset).';
   }
 

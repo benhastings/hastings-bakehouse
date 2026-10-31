@@ -24,6 +24,18 @@ function banner(today, links) {
   <a href="${links.inspect}" target="_blank" style="color:#fff">open inspector ↗</a></div>`;
 }
 
+/**
+ * The sandbox's stand-in for a PDF viewer: the invoice file is the template's HTML, so on screen it gets the letter
+ * page its @page rule gives the real PDF (8.5in wide, 0.4in margins) on a gray backdrop. Phones scale the whole page.
+ */
+const PAGE = `<meta name="viewport" content="width=880">
+<style>@media screen {
+  html { background: #525659; }
+  body { box-sizing: border-box; width: 8.5in; min-height: 11in; margin: 24px auto !important; padding: 0.4in !important;
+    background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.4); }
+}</style>`;
+const asPdfPage = html => html.replace('</head>', PAGE + '</head>');
+
 const cellText = v => (Object.prototype.toString.call(v) === '[object Date]' ? v.toISOString().slice(0, 10) : v);
 
 /**
@@ -124,5 +136,5 @@ function renderInspector(sandbox, opts) {
 </main></body></html>`;
 }
 
-return { banner, renderInspector, localLinks, esc };
+return { banner, renderInspector, localLinks, asPdfPage, esc };
 });

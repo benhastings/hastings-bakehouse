@@ -13,7 +13,7 @@ const http = require('http');
 const os = require('os');
 const path = require('path');
 const { createSandbox, STARTS } = require('./sandbox');
-const { banner, renderInspector, localLinks } = require('./inspector');
+const { banner, renderInspector, localLinks, asPdfPage } = require('./inspector');
 
 const args = process.argv.slice(2);
 const flag = name => (args.find(a => a.startsWith('--' + name + '=')) || '').slice(name.length + 3) || undefined;
@@ -97,7 +97,7 @@ http.createServer(async (req, res) => {
     const file = url.pathname.match(/^\/_file\/([-\w]+)$/);
     if (file && sandbox.env.drive.files[file[1]]) {
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      return res.end(sandbox.env.drive.files[file[1]].blob.content);
+      return res.end(asPdfPage(sandbox.env.drive.files[file[1]].blob.content));
     }
     // Raw JSON, handy for scripts.
     if (url.pathname === '/_drafts' || url.pathname === '/_sheet') {
