@@ -16,7 +16,7 @@ const STARTS = {
 };
 
 // Server functions that change something. Everything else the UI calls only reads, so it isn't logged.
-const CHANGES = ['setupSheet', 'saveProductionWeek', 'saveInvoice', 'saveAndDraftInvoice', 'createInvoiceDraft',
+const CHANGES = ['setupSheet', 'saveProductionDay', 'saveInvoice', 'saveAndDraftInvoice', 'createInvoiceDraft',
   'createInvoicePdf', 'setInvoiceStatus'];
 
 const DEFAULT_TODAY = '2026-10-08';
@@ -32,18 +32,36 @@ function createSandbox(options) {
   if (options && options.today) state.today = options.today;
 
   let env;
+  let dropped = [];
 
   function fresh() {
     env = loadApp(state.start === 'blank' ? blankTabs() : sampleTabs(), { today: state.today });
     if (state.start === 'setup') env.app.setupSheet();
   }
 
+  /**
+   * Replay the log. If the app code changed so a logged change no longer works (a renamed function, say), keep
+   * the changes before it, drop it and everything after, and report them in `dropped`.
+   */
   function rebuild() {
     fresh();
-    state.actions.forEach(a => {
-      env.setToday(a.today);
-      env.app[a.fn](...a.args);
-    });
+    const kept = [];
+    for (const a of state.actions) {
+      try {
+        if (typeof env.app[a.fn] !== 'function') throw new Error(a.fn + ' no longer exists');
+        env.setToday(a.today);
+        env.app[a.fn](...a.args);
+        kept.push(a);
+      } catch (e) {
+        dropped = state.actions.slice(kept.length);
+        dropped[0] = Object.assign({ error: e.message }, dropped[0]);
+        state.actions = kept;
+        fresh();
+        kept.forEach(k => { env.setToday(k.today); env.app[k.fn](...k.args); });
+        save();
+        break;
+      }
+    }
     env.setToday(state.today);
   }
 
@@ -99,6 +117,7 @@ function createSandbox(options) {
     call, undo, reset, setToday,
     get env() { return env; },
     get state() { return state; },
+    get dropped() { return dropped; },
   };
 }
 

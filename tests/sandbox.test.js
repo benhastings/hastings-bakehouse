@@ -12,9 +12,9 @@ const sheet = sb => Object.fromEntries(sb.env.spreadsheet.sheets.map(s => [s.nam
 
 function weekOfWork(sb) {
   sb.call('setupSheet', []);
-  sb.call('saveProductionWeek', ['2026-10-05', [
-    { date: '2026-10-05', made: { 'Coffee Cake Muffin': 12 }, loss: {} },
-    { date: '2026-10-06', made: { 'Coffee Cake Muffin': 10, 'Lemon Blueberry Muffin': 6 }, loss: { 'Coffee Cake Muffin': 1 } },
+  sb.call('saveProductionDay', ['2026-10-07', [
+    { product: 'Coffee Cake Muffin', made: 10, loss: 1 },
+    { product: 'Lemon Blueberry Muffin', made: 6 },
   ]]);
   const inv = sb.call('buildWeeklyInvoice', ['2026-10-05']);
   inv.email = 'orders@example.com';
@@ -28,7 +28,7 @@ test('changes are logged and replayed exactly after a restart', () => {
   const saved = weekOfWork(first);
   assert.ok(saved.number, 'invoice number assigned');
   assert.equal(saved.draftError, undefined);
-  assert.deepEqual(first.state.actions.map(a => a.fn), ['setupSheet', 'saveProductionWeek', 'saveAndDraftInvoice']);
+  assert.deepEqual(first.state.actions.map(a => a.fn), ['setupSheet', 'saveProductionDay', 'saveAndDraftInvoice']);
 
   const second = createSandbox({ stateFile: file });
   assert.deepEqual(sheet(second), sheet(first));
@@ -56,9 +56,22 @@ test('a failed change is not logged and leaves no partial writes', () => {
   const sb = createSandbox({});
   sb.call('setupSheet', []);
   const before = sheet(sb);
-  assert.throws(() => sb.call('saveProductionWeek', ['not-a-date', []]));
+  assert.throws(() => sb.call('saveProductionDay', ['not-a-date', []]));
   assert.equal(sb.state.actions.length, 1);
   assert.deepEqual(sheet(sb), before);
+});
+
+test('a saved sandbox from older code keeps the changes that still replay', () => {
+  const file = tmpState();
+  fs.writeFileSync(file, JSON.stringify({ start: 'sample', today: '2026-10-08', actions: [
+    { today: '2026-10-08', fn: 'setupSheet', args: [] },
+    { today: '2026-10-08', fn: 'saveProductionWeek', args: ['2026-10-05', []] },
+    { today: '2026-10-08', fn: 'setInvoiceStatus', args: ['2026-001', 'paid'] },
+  ] }));
+  const sb = createSandbox({ stateFile: file });
+  assert.deepEqual(sb.state.actions.map(a => a.fn), ['setupSheet']);
+  assert.equal(sb.dropped.length, 2);
+  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).actions.length, 1);
 });
 
 test('the pretend day moves with setToday and is replayed per change', () => {

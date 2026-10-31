@@ -21,6 +21,10 @@ const lan = args.includes('--lan');
 const keep = args.includes('--keep');
 const stateFile = keep ? path.join(__dirname, '..', '.sandbox', 'state.json') : null;
 const sandbox = createSandbox({ stateFile, start: flag('start') || (args.includes('--setup') ? 'setup' : undefined), today: flag('today') });
+if (sandbox.dropped.length) {
+  console.warn('The saved sandbox had ' + sandbox.dropped.length + ' change(s) the current app code can\'t replay (' +
+    sandbox.dropped[0].error + '). Kept the ones before it; dropped: ' + sandbox.dropped.map(a => a.fn).join(', ') + '.');
+}
 
 const SHIM = `<meta name="viewport" content="width=device-width, initial-scale=1">
 <script>

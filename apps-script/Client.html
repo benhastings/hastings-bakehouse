@@ -4,9 +4,10 @@
 
   const state = {
     app: null,          // getAppData() result
-    week: null,         // getProductionWeek() result
-    edits: {},          // date -> { made: {}, loss: {} } for days changed since load
-    open: {},           // date -> expanded?
+    day: null,          // getProductionDay() result for the day on screen
+    rows: [],           // entry rows: { product, made, loss, isNew }
+    showLoss: false,    // loss/damage column visible
+    dirty: false,       // rows changed since load/save
     invoice: null,      // invoice being edited (number, weekOf, items...)
   };
 
@@ -75,7 +76,7 @@
   function showView(name) {
     document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.view === name)));
     ['production', 'invoice', 'history'].forEach(v => { $('view-' + v).hidden = v !== name; });
-    $('savebar').hidden = name !== 'production' || !hasEdits();
+    $('savebar').hidden = name !== 'production' || !state.dirty;
     if (name === 'history') loadHistory();
     window.scrollTo(0, 0);
   }
@@ -102,7 +103,7 @@
     }
     fillLists();
     newInvoice();
-    await loadWeek(state.app.productionMonday);
+    await loadDay(state.app.today);
     showView('production');
   }
 
@@ -114,7 +115,7 @@
     if (!state.app.setupNeeded) {
       fillLists();
       newInvoice();
-      await loadWeek(state.app.productionMonday);
+      await loadDay(state.app.today);
       $('setup').hidden = true;
       showView('production');
       toast('Sheet is ready.');
@@ -135,116 +136,222 @@
 
   // ---------- production ----------
 
-  function hasEdits() { return Object.keys(state.edits).length > 0; }
+  const LONG_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function longLabel(iso) {
+    const d = parseIso(iso);
+    return LONG_DAYS[d.getUTCDay()] + ', ' + MONTHS[d.getUTCMonth()] + ' ' + d.getUTCDate();
+  }
+  const sameName = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  const knownProduct = name => state.app.products.find(p => sameName(p, name));
 
-  async function loadWeek(monday) {
-    if (hasEdits() && !confirm('You have unsaved production changes. Discard them?')) return;
-    state.edits = {};
-    $('days').replaceChildren(el('div', { class: 'loading' }, el('div', { class: 'spinner' }), 'Loading week…'));
+  async function loadDay(date) {
+    if (state.dirty && !confirm('You have unsaved changes for ' + dayLabel(state.day.date) + '. Discard them?')) return;
+    $('entry-rows').replaceChildren(el('div', { class: 'loading' }, el('div', { class: 'spinner' }), 'Loading…'));
     try {
-      state.week = await run('getProductionWeek', monday);
+      showDay(await run('getProductionDay', date));
     } catch (err) {
-      $('days').replaceChildren(el('div', { class: 'banner error' }, errorMessage(err)));
-      return;
+      $('entry-rows').replaceChildren(el('div', { class: 'banner error' }, errorMessage(err)));
     }
-    const wide = window.matchMedia('(min-width: 900px)').matches;
-    state.open = {};
-    state.week.days.forEach(d => { state.open[d.date] = wide || d.date === state.app.today; });
-    if (!wide && !state.week.days.some(d => state.open[d.date])) state.open[state.week.days[0].date] = true;
+  }
+
+  /** Put a server day on screen, discarding unsaved rows. */
+  function showDay(day) {
+    state.day = day;
+    state.rows = day.items.map(p => ({ product: p, made: day.made[p] || '', loss: day.loss[p] || '', isNew: false }));
+    state.showLoss = Object.keys(day.loss).length > 0;
+    setDirty(false);
+    renderDay();
+  }
+
+  function setDirty(dirty) {
+    state.dirty = dirty;
+    $('savebar-label').textContent = 'Unsaved changes for ' + dayLabel(state.day.date);
+    $('savebar').hidden = !dirty || $('view-production').hidden;
+  }
+
+  function renderDay() {
+    const day = state.day;
+    $('day-label').textContent = longLabel(day.date);
+    $('day-date').value = day.date;
+    $('day-today').hidden = day.date === state.app.today;
+
+    const notes = [];
+    if (parseIso(day.date).getUTCDay() === 0) {
+      notes.push(el('div', { class: 'banner warn' }, 'Sunday isn\'t part of the Monday–Saturday invoice week, so anything entered here won\'t be invoiced.'));
+    }
+    if (day.itemsFrom && !Object.keys(day.made).length) {
+      notes.push(el('div', { class: 'muted small' }, 'Same items as ' + dayLabel(day.itemsFrom) + '. Remove any you didn\'t make; add any you did.'));
+    }
+    $('day-note').replaceChildren(...notes);
+    $('day-other').textContent = day.otherNotes.length ? 'Also in the sheet for this day: ' + day.otherNotes.join(', ') : '';
+
+    renderRows();
     renderWeek();
   }
 
-  function dayValues(day) {
-    return state.edits[day.date] || { made: Object.assign({}, day.made), loss: Object.assign({}, day.loss) };
-  }
-
-  function sumMap(m) { return Object.values(m).reduce((s, v) => s + num(v), 0); }
-
-  function renderWeek() {
-    const w = state.week;
-    $('week-label').textContent = 'Week of ' + w.label;
-    $('days').replaceChildren(...w.days.map(day => {
-      const vals = dayValues(day);
-      const made = sumMap(vals.made);
-      const loss = sumMap(vals.loss);
-      const summary = made || loss ? made + ' made' + (loss ? ' · ' + loss + ' loss' : '') : 'nothing entered';
-      const open = state.open[day.date];
-      const input = (kind, product) => el('input', {
-        type: 'number', min: '0', step: '1', inputmode: 'numeric',
-        value: vals[kind][product] || '', 'aria-label': product + ' ' + kind,
-        oninput: e => editDay(day, kind, product, e.target.value),
+  function renderRows() {
+    $('view-production').querySelector('.entry').classList.toggle('show-loss', state.showLoss);
+    $('entry-loss').textContent = state.showLoss ? 'Hide loss/damage' : 'Record loss/damage';
+    $('entry-loss').hidden = state.showLoss && state.rows.some(r => num(r.loss));
+    if (!state.rows.length) {
+      $('entry-rows').replaceChildren(el('div', { class: 'entry-empty' }, 'Nothing entered for this day. Add the items you made.'));
+      return;
+    }
+    $('entry-rows').replaceChildren(...state.rows.map((row, index) => {
+      const count = kind => el('input', {
+        type: 'number', min: '0', step: '1', inputmode: 'numeric', class: kind,
+        value: row[kind] || '', 'aria-label': (row.product || 'New item') + (kind === 'made' ? ' made' : ' loss/damage'),
+        oninput: e => {
+          row[kind] = e.target.value;
+          setDirty(true);
+          renderWeek();
+          if (kind === 'loss') $('entry-loss').hidden = state.rows.some(r => num(r.loss));
+        },
+        onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); focusNext(index, kind); } },
       });
-      return el('div', {
-        class: 'card day' + (day.date === state.app.today ? ' today' : '') + (state.edits[day.date] ? ' dirty' : ''),
-      },
+      let name;
+      if (row.isNew) {
+        const tag = el('span', { class: 'tag' });
+        const markNew = () => {
+          tag.textContent = row.product && !knownProduct(row.product) ? 'New item: saving adds a column to the Production tab' : '';
+        };
+        name = el('div', {}, el('input', {
+          type: 'text', class: 'product', list: 'product-list', autocomplete: 'off', placeholder: 'Item name',
+          value: row.product, 'aria-label': 'Item name',
+          oninput: e => { row.product = e.target.value; markNew(); setDirty(true); },
+          onchange: e => nameChosen(row, e.target),
+          onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); focusRow(state.rows.indexOf(row), 'made'); } },
+        }), tag);
+        markNew();
+      } else {
+        name = el('span', { class: 'name' }, row.product);
+      }
+      return el('div', { class: 'entry-row' + (row.isNew ? ' new' : '') },
+        name,
+        count('made'),
+        el('div', { class: 'loss-col' }, count('loss')),
         el('button', {
-          class: 'day-head', 'aria-expanded': String(open),
-          onclick: () => { state.open[day.date] = !open; renderWeek(); },
-        }, el('span', { class: 'name' }, dayLabel(day.date)), el('span', { class: 'muted small' }, summary + (open ? ' ▴' : ' ▾'))),
-        open ? el('div', { class: 'day-body' },
-          el('table', {},
-            el('thead', {}, el('tr', {}, el('th', {}, 'Product'), el('th', {}, 'Made'), el('th', {}, 'Loss'))),
-            el('tbody', {}, w.products.map(p => el('tr', {}, el('td', {}, p), el('td', {}, input('made', p)), el('td', {}, input('loss', p)))))),
-          day.otherNotes.length ? el('div', { class: 'other' }, 'Also in the sheet for this day: ' + day.otherNotes.join(', ')) : '')
-          : '');
+          class: 'icon-btn', 'aria-label': 'Remove ' + (row.product || 'item'), title: 'Remove',
+          onclick: () => { state.rows.splice(index, 1); setDirty(true); renderRows(); renderWeek(); },
+        }, '×'));
     }));
-    renderWeekTotals();
-    $('savebar').hidden = !hasEdits();
   }
 
-  /** Live totals: server totals adjusted by unsaved edits. */
-  function renderWeekTotals() {
-    const w = state.week;
-    const rows = w.products.map(p => {
-      let total = num(w.totals[p]);
-      Object.keys(state.edits).forEach(date => {
-        const orig = w.days.find(d => d.date === date);
-        const edit = state.edits[date];
-        total += (num(edit.made[p]) - num(edit.loss[p])) - (num(orig.made[p]) - num(orig.loss[p]));
-      });
-      return [p, total];
-    }).filter(([, t]) => t);
+  /** A typed name: use the sheet's spelling of a known item, and don't list the same item twice. */
+  function nameChosen(row, input) {
+    const typed = input.value.replace(/\s+/g, ' ').trim();
+    const known = knownProduct(typed);
+    row.product = known || typed;
+    input.value = row.product;
+    const twin = state.rows.find(r => r !== row && r.product && sameName(r.product, row.product));
+    if (twin) {
+      state.rows.splice(state.rows.indexOf(row), 1);
+      renderRows();
+      toast(twin.product + ' is already on the list.');
+      focusRow(state.rows.indexOf(twin), 'made');
+      return;
+    }
+    input.dispatchEvent(new Event('input'));
+  }
+
+  function focusRow(index, kind) {
+    const row = $('entry-rows').children[index];
+    const input = row && row.querySelector('input.' + kind);
+    if (input) { input.focus(); input.select(); }
+  }
+
+  function focusNext(index, kind) {
+    if (index + 1 < state.rows.length) focusRow(index + 1, kind);
+    else $('entry-add').focus();
+  }
+
+  /** Net per item for the rows on screen. */
+  function rowsNet() {
+    const net = {};
+    state.rows.forEach(r => {
+      if (!r.product) return;
+      const p = knownProduct(r.product) || r.product.trim();
+      net[p] = (net[p] || 0) + Math.abs(num(r.made)) - Math.abs(num(r.loss));
+    });
+    return net;
+  }
+
+  /** The week card, with the day on screen counted as typed (saved or not). */
+  function renderWeek() {
+    const day = state.day;
+    const w = day.week;
+    $('week-label').textContent = w.label;
+    const madeNow = state.rows.reduce((s, r) => s + Math.abs(num(r.made)), 0);
+    const lossNow = state.rows.reduce((s, r) => s + Math.abs(num(r.loss)), 0);
+    $('week-days').replaceChildren(...w.days.map(d => {
+      const current = d.date === day.date;
+      const made = current ? madeNow : d.made;
+      const loss = current ? lossNow : d.loss;
+      const summary = made || loss ? made + ' made' + (loss ? ' · ' + loss + ' loss' : '') : '—';
+      return el('button', {
+        class: 'week-day' + (current ? ' current' : ''), 'aria-current': current ? 'date' : false,
+        onclick: () => { if (!current) loadDay(d.date); },
+      },
+        el('span', { class: 'when' }, dayLabel(d.date), d.date === state.app.today ? el('small', {}, 'today') : ''),
+        el('span', { class: 'muted small' }, summary));
+    }));
+
+    const totals = Object.assign({}, w.totals);
+    if (parseIso(day.date).getUTCDay() !== 0) {
+      day.products.forEach(p => { totals[p] = num(totals[p]) - num(day.made[p]) + num(day.loss[p]); });
+      const net = rowsNet();
+      Object.keys(net).forEach(p => { totals[p] = num(totals[p]) + net[p]; });
+    }
+    const rows = Object.keys(totals).filter(p => totals[p]);
     $('week-totals').replaceChildren(...(rows.length
-      ? rows.map(([p, t]) => el('tr', {}, el('td', {}, p), el('td', { class: 'num' }, String(t))))
+      ? rows.map(p => el('tr', {}, el('td', {}, p), el('td', { class: 'num' }, String(totals[p]))))
       : [el('tr', {}, el('td', { class: 'muted' }, 'No production entered this week yet.'))]));
   }
 
-  function editDay(day, kind, product, value) {
-    if (!state.edits[day.date]) state.edits[day.date] = { made: Object.assign({}, day.made), loss: Object.assign({}, day.loss) };
-    const n = Math.abs(num(value));
-    if (n) state.edits[day.date][kind][product] = n;
-    else delete state.edits[day.date][kind][product];
-    // Update summary/totals without re-rendering inputs (keeps focus while typing).
-    const card = $('days').children[state.week.days.indexOf(day)];
-    card.classList.add('dirty');
-    const vals = state.edits[day.date];
-    const made = sumMap(vals.made), loss = sumMap(vals.loss);
-    card.querySelector('.day-head .muted').textContent =
-      (made || loss ? made + ' made' + (loss ? ' · ' + loss + ' loss' : '') : 'nothing entered') + ' ▴';
-    renderWeekTotals();
-    $('savebar').hidden = false;
+  async function saveDay() {
+    const entries = state.rows.filter(r => r.product.trim())
+      .map(r => ({ product: r.product, made: Math.abs(num(r.made)), loss: Math.abs(num(r.loss)) }));
+    const added = entries.some(e => (e.made || e.loss) && !knownProduct(e.product));
+    const day = await run('saveProductionDay', state.day.date, entries);
+    if (added) await refreshAppData();
+    // Keep items with no count on screen: they're the day's list, just not made yet.
+    const keep = state.rows.filter(r => r.product.trim() && !num(r.made) && !num(r.loss)).map(r => knownProduct(r.product) || r.product.trim());
+    showDay(day);
+    keep.forEach(p => { if (!state.rows.some(r => sameName(r.product, p))) state.rows.push({ product: p, made: '', loss: '', isNew: false }); });
+    renderRows();
+    toast(dayLabel(day.date) + ' saved.');
   }
 
-  async function saveWeek() {
-    const days = Object.keys(state.edits).map(date => ({ date, made: state.edits[date].made, loss: state.edits[date].loss }));
-    state.week = await run('saveProductionWeek', state.week.monday, days);
-    state.edits = {};
-    renderWeek();
-    toast('Production saved.');
-  }
-
-  $('week-save').addEventListener('click', e => busy(e.target, 'Saving…', saveWeek));
-  $('week-prev').addEventListener('click', () => loadWeek(addDays(state.week.monday, -7)));
-  $('week-next').addEventListener('click', () => loadWeek(addDays(state.week.monday, 7)));
-  $('week-today').addEventListener('click', () => loadWeek(state.app.productionMonday));
+  $('day-save').addEventListener('click', e => busy(e.target, 'Saving…', saveDay));
+  $('day-revert').addEventListener('click', () => { state.dirty = false; loadDay(state.day.date); });
+  $('day-prev').addEventListener('click', () => loadDay(addDays(state.day.date, -1)));
+  $('day-next').addEventListener('click', () => loadDay(addDays(state.day.date, 1)));
+  $('day-today').addEventListener('click', () => loadDay(state.app.today));
+  $('day-title').addEventListener('click', () => {
+    const input = $('day-date');
+    try { input.showPicker(); } catch (err) { input.focus(); input.click(); }
+  });
+  $('day-date').addEventListener('change', e => { if (e.target.value) loadDay(e.target.value); });
+  $('entry-add').addEventListener('click', () => {
+    state.rows.push({ product: '', made: '', loss: '', isNew: true });
+    renderRows();
+    const inputs = $('entry-rows').querySelectorAll('input.product');
+    inputs[inputs.length - 1].focus();
+  });
+  $('entry-loss').addEventListener('click', () => {
+    state.showLoss = !state.showLoss;
+    renderRows();
+    if (state.showLoss) focusRow(0, 'loss');
+  });
   $('week-invoice').addEventListener('click', e => busy(e.target, 'Loading…', async () => {
-    if (hasEdits()) await saveWeek();
-    await fillFromWeek(state.week.monday);
+    if (state.dirty) await saveDay();
+    await fillFromWeek(state.day.week.monday);
     showView('invoice');
   }));
 
   window.addEventListener('beforeunload', e => {
-    if (hasEdits()) { e.preventDefault(); e.returnValue = ''; }
+    if (state.dirty) { e.preventDefault(); e.returnValue = ''; }
   });
 
   // ---------- invoice form ----------

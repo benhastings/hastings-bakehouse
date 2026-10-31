@@ -35,20 +35,36 @@
       <div id="setup-result"></div>
     </section>
 
-    <!-- Production week view -->
+    <!-- Production: one day at a time -->
     <section id="view-production" hidden>
-      <div class="weeknav">
-        <button class="icon-btn" id="week-prev" aria-label="Previous week">◀</button>
-        <h2 id="week-label"></h2>
-        <button class="icon-btn" id="week-next" aria-label="Next week">▶</button>
+      <div class="daynav">
+        <button class="icon-btn" id="day-prev" aria-label="Previous day">◀</button>
+        <div class="daypick">
+          <button class="day-title" id="day-title" aria-label="Pick a date"><span id="day-label"></span> ▾</button>
+          <input type="date" id="day-date" class="visually-hidden" tabindex="-1" aria-hidden="true">
+          <button class="btn ghost small" id="day-today" hidden>Back to today</button>
+        </div>
+        <button class="icon-btn" id="day-next" aria-label="Next day">▶</button>
       </div>
-      <p class="muted small" style="text-align:center;margin-top:-4px">
-        <button class="btn ghost small" id="week-today">Jump to this week</button>
-      </p>
-      <div id="days" class="days"></div>
-      <div class="card totals" style="margin-top:12px">
-        <h2 style="font-size:17px">Week total <span class="muted small">(made − loss/damage)</span></h2>
-        <table><tbody id="week-totals"></tbody></table>
+
+      <div class="card entry">
+        <div id="day-note"></div>
+        <div class="entry-head"><span>Item</span><span>Made</span><span class="loss-col">Loss</span><span></span></div>
+        <div id="entry-rows"></div>
+        <div class="entry-tools">
+          <button class="btn" id="entry-add">+ Add item</button>
+          <button class="btn ghost" id="entry-loss">Record loss/damage</button>
+        </div>
+        <div id="day-other" class="other"></div>
+      </div>
+
+      <div class="card week">
+        <h2>This week <span class="muted small" id="week-label"></span></h2>
+        <div id="week-days" class="week-days"></div>
+        <details class="week-items">
+          <summary>Totals by item <span class="muted small">(made − loss/damage)</span></summary>
+          <table><tbody id="week-totals"></tbody></table>
+        </details>
         <div class="actions">
           <button class="btn primary" id="week-invoice">Create invoice for this week →</button>
         </div>
@@ -119,8 +135,9 @@
   </main>
 
   <div id="savebar" class="savebar" hidden>
-    <span>Unsaved production changes</span>
-    <button class="btn primary" id="week-save">Save</button>
+    <span id="savebar-label">Unsaved changes</span>
+    <button class="btn ghost" id="day-revert">Undo</button>
+    <button class="btn primary" id="day-save">Save</button>
   </div>
 
   <div id="preview" class="modal" hidden>

@@ -3,7 +3,7 @@
 Production tracking and invoicing for Hastings Bakehouse, as a Google Apps Script web app attached to the
 **Hastings Bakehouse Accounting** sheet.
 
-- **Production**: enter each day's counts and loss/damage (Mon–Sat). Writes the `Production` tab in the same format it already uses.
+- **Production**: one day at a time. The day starts with the items from the last day you baked; add or remove rows as needed, plus loss/damage. A new item adds its own column. Writes the `Production` tab in the same format it already uses.
 - **Invoice**: build the week's invoice from production (net of loss/damage × saved prices) or enter a one-off invoice. Saving writes the `Invoices` tab (plus line items).
 - **Save & create Gmail draft**: generates the PDF into a shared Drive folder and creates a Gmail draft to the customer with it attached. Review it in Gmail, then hit send.
 - **History**: reopen, duplicate, or mark invoices sent/paid.
@@ -36,7 +36,7 @@ The first time the app opens, it offers **Set up sheet**, which is also under th
 
 Invoice numbers are `YYYY-NNN` (e.g. `2026-001`) and restart each year. Older invoice rows are left as they are and show in History as "entered before the app".
 
-Production columns are read from the `Production` header row, so adding a product is just adding a column there.
+Production columns are read from the `Production` header row. Adding an item in the app adds its column; adding a column by hand works too.
 
 ## First-time setup
 

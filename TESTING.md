@@ -39,15 +39,20 @@ a screenshot, or a GitHub issue) and we fix it in the sandbox before stage 2.
 - [ ] Inspector: the Invoices tab has new columns on the right; new tabs Invoice Items, Prices, Customers, Settings exist;
       nothing old changed.
 
-**B. A week of production**
-- [ ] Enter made and loss/damage numbers on a few days. The week total is made minus loss.
-- [ ] Save. Inspector: one row per day, plus a `LOSS/DAMAGE` row only on days with losses.
-- [ ] Change a day you already saved and save again. The row is updated, not duplicated.
-- [ ] Clear a loss you entered. Its `LOSS/DAMAGE` row disappears.
-- [ ] Step back to an earlier week. Its numbers match the sheet.
+**B. Entering a day's production**
+- [ ] The Production tab opens on today. If nothing is entered yet, it lists the items from the last day you baked,
+      with empty counts. Type the counts (Enter jumps to the next one), remove items you didn't make, and **Save**.
+- [ ] **+ Add item**: pick a known item from the suggestions, or type a new one. A new item says it will add a column;
+      after saving, the inspector's Production tab has that column and the item is suggested from then on.
+- [ ] Add an item that's already listed (any capitalization): the app points you to the existing row instead.
+- [ ] **Record loss/damage** shows a Loss column. Inspector: a `LOSS/DAMAGE` row only on days with losses.
+- [ ] Change a saved day and save again. The row is updated, not duplicated. Clear a loss: its `LOSS/DAMAGE` row goes.
+- [ ] ◀ ▶, the date title (opens a calendar), and the days in **This week** all move between days. With unsaved
+      changes, the app asks first. **This week** and **Totals by item** match the inspector.
+- [ ] Pick a Sunday: the app warns it isn't part of an invoice week.
 
 **C. The weekly Demarest invoice**
-- [ ] **Create invoice for this week**: the quantities match the week totals.
+- [ ] **Create invoice for this week**: the quantities match **Totals by item**.
 - [ ] Prices are empty the first time. Enter them, add Demarest's email, **Save & draft email**.
 - [ ] The invoice number is `2026-001`, then `2026-002` and so on.
 - [ ] Inspector: one Invoices row, its line items, the prices remembered, Demarest in Customers, a draft with the invoice
