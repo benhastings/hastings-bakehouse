@@ -6,6 +6,11 @@
     "test": "node --test tests/",
     "dev": "node tools/dev-server.js",
     "push": "clasp push --force",
-    "deploy": "npm test && clasp push --force && clasp deploy -i $(cat .deployment-id) -d \"$(git log -1 --format=%h)\""
+    "deploy": "npm test && clasp push --force && clasp deploy -i $(cat .deployment-id) -d \"$(git log -1 --format=%h)\"",
+    "sandbox": "node tools/dev-server.js --keep",
+    "sandbox:sheet": "node tools/sandbox-sheet.js",
+    "sandbox:push": "npm test && clasp -P .clasp.sandbox.json push --force",
+    "demo:build": "node tools/build-demo.js",
+    "demo:publish": "npm test && node tools/build-demo.js --publish"
   }
 }

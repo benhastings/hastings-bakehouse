@@ -3,7 +3,7 @@
 Production tracking and invoicing for Hastings Bakehouse, as a Google Apps Script web app attached to the
 **Hastings Bakehouse Accounting** sheet.
 
-- **Production**: enter each day's counts and loss/damage (Mon–Sat). Writes the `Production` tab in the same format it already uses.
+- **Production**: one day at a time. The day starts with the items from the last day you baked; add or remove rows as needed, plus loss/damage. A new item adds its own column. Writes the `Production` tab in the same format it already uses.
 - **Invoice**: build the week's invoice from production (net of loss/damage × saved prices) or enter a one-off invoice. Saving writes the `Invoices` tab (plus line items).
 - **Save & create Gmail draft**: generates the PDF into a shared Drive folder and creates a Gmail draft to the customer with it attached. Review it in Gmail, then hit send.
 - **History**: reopen, duplicate, or mark invoices sent/paid.
@@ -36,7 +36,7 @@ The first time the app opens, it offers **Set up sheet**, which is also under th
 
 Invoice numbers are `YYYY-NNN` (e.g. `2026-001`) and restart each year. Older invoice rows are left as they are and show in History as "entered before the app".
 
-Production columns are read from the `Production` header row, so adding a product is just adding a column there.
+Production columns are read from the `Production` header row. Adding an item in the app adds its column; adding a column by hand works too.
 
 ## First-time setup
 
@@ -75,17 +75,29 @@ the editor's **Deploy → Test deployments** URL always runs the latest pushed c
 
 ## Developing locally
 
+**[TESTING.md](TESTING.md)** is the step-by-step test plan: a local sandbox first, then a practice Google sheet, then the
+real one.
+
 ```sh
 npm test                 # unit + integration tests against an in-memory copy of the sheet
-npm run dev              # http://localhost:8787 runs the real UI and server code on sample data
-npm run dev -- --setup --today=2026-10-11
+npm run sandbox          # http://localhost:8787 runs the real UI and server code on sample data; /_inspect shows the result
+npm run dev -- --setup --today=2026-10-11   # same, but nothing is saved between runs
+npm run demo:publish     # the sandbox as a static site: https://benhastings.github.io/bakehouse-app-preview/
 ```
 
-`tests/harness.js` loads the Apps Script files into Node with fake `SpreadsheetApp`, `DriveApp`, `GmailApp`, and so on. The dev
-server uses the same fakes, so nothing touches the real sheet. `/_sheet` and `/_drafts` on the dev server show what was written.
+`tests/fakes.js` has fake `SpreadsheetApp`, `DriveApp`, `GmailApp`, and so on; `tests/harness.js` loads the Apps Script
+files into Node with them. The sandbox (`tools/sandbox-core.js`, served by `tools/dev-server.js`) uses the same fakes, so
+nothing touches the real sheet. It logs each change and replays the log on start, which is how it survives restarts and
+supports undo.
 
-The PDF is rendered by Google's HTML-to-PDF converter, which only supports simple CSS (tables, no flexbox, no web fonts), so
-`InvoicePrint.html` sticks to those. Check a real PDF after changing it.
+The online preview is the same sandbox running in the browser instead of on a server: `tools/build-demo.js` bundles the
+fakes, the sandbox, the inspector and the Apps Script files into `.demo/`, and `--publish` force-pushes that to the
+[bakehouse-app-preview](https://github.com/benhastings/bakehouse-app-preview) repo, which GitHub Pages serves. Each
+visitor's changes stay in their own browser. That repo only holds the latest build; edit here, not there.
+
+The PDF is the print view of `invoice-form.html` (what used to be printed to PDF by hand), rebuilt in `InvoicePrint.html`.
+Google's HTML-to-PDF converter renders it, and only supports simple CSS (tables, no flexbox, maybe no web fonts), so the
+template sticks to those and falls back to Georgia. Check a real PDF after changing it.
 
 `apps-script/Logo.js` is generated from `bakehouse.png` by `tools/build-logo.sh`.
 
@@ -103,7 +115,8 @@ apps-script/        deployed to Apps Script by clasp
   Index.html, Styles.html, Client.html   the app UI
   InvoicePrint.html invoice PDF template
 tests/              node --test suites + fake Google services
-tools/              dev server, logo builder
+tools/              sandbox + its server, online preview builder, practice-sheet builder, logo builder
+TESTING.md          test plan: sandbox → practice sheet → real sheet
 index.html          public landing page (GitHub Pages)
 img/, fonts/        site images (EXIF stripped) and self-hosted fonts
 robots.txt, sitemap.xml, 404.html   search and error pages for the site

@@ -3,7 +3,7 @@
  */
 
 /** Everything InvoicePrint.html needs, preformatted. */
-function invoiceView_(inv, settings) {
+function invoiceView_(inv, settings, preview) {
   const totals = computeTotals_(inv.items, inv.fees);
   return {
     businessName: settings['Business Name'],
@@ -23,14 +23,16 @@ function invoiceView_(inv, settings) {
       lineTotal: formatMoney_(l.lineTotal),
     })),
     subtotal: formatMoney_(totals.subtotal),
-    fees: totals.fees ? formatMoney_(totals.fees) : '',
+    fees: formatMoney_(totals.fees),
     total: formatMoney_(totals.total),
+    preview: Boolean(preview),
   };
 }
 
-function renderInvoiceHtml_(inv, settings) {
+/** preview: on screen there are no @page margins, so the page draws its own. */
+function renderInvoiceHtml_(inv, settings, preview) {
   const template = HtmlService.createTemplateFromFile('InvoicePrint');
-  template.data = invoiceView_(inv, settings);
+  template.data = invoiceView_(inv, settings, preview);
   return template.evaluate().getContent();
 }
 
@@ -84,7 +86,7 @@ function createInvoicePdf(number) {
 function previewInvoiceHtml(raw) {
   const inv = cleanInvoice_(raw);
   inv.number = inv.number || '(assigned on save)';
-  return renderInvoiceHtml_(inv, readSettings_());
+  return renderInvoiceHtml_(inv, readSettings_(), true);
 }
 
 /**

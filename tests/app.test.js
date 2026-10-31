@@ -67,17 +67,38 @@ test('getProductionWeek nets LOSS/DAMAGE and reads text and Date cells', () => {
   });
 });
 
-test('saveProductionWeek updates in place, inserts sorted rows, and removes emptied LOSS rows', () => {
+test('getProductionDay lists the day\'s items, or the last production day\'s when empty', () => {
   const env = setUp();
-  const week = plain(env.app.saveProductionWeek('2026-09-28', [
-    // Edit an existing text-dated row; clear its loss row.
-    { date: '2026-09-29', made: { 'Coffee Cake Muffin': 11, 'Vanilla Cake Pop': 12, 'Chocolate Cake Pop': 12 }, loss: {} },
-    // New day between existing rows, with a loss (entered as a positive number).
-    { date: '2026-09-30', made: { 'Lemon Blueberry Muffin': '24' }, loss: { 'Lemon Blueberry Muffin': '3' } },
-  ]));
+  const day = plain(env.app.getProductionDay('2026-09-29'));
+  assert.deepEqual(day.items, ['Coffee Cake Muffin', 'Vanilla Cake Pop', 'Chocolate Cake Pop']);
+  assert.deepEqual(day.made, { 'Coffee Cake Muffin': 10, 'Vanilla Cake Pop': 12, 'Chocolate Cake Pop': 12 });
+  assert.deepEqual(day.loss, { 'Coffee Cake Muffin': 2, 'Chocolate Cake Pop': 1 });
+  assert.equal(day.itemsFrom, '');
+  assert.equal(day.week.monday, '2026-09-28');
+  assert.deepEqual(day.week.days[1], { date: '2026-09-29', made: 34, loss: 3 });
+  assert.equal(day.week.totals['Chocolate Cake Pop'], 11);
+
+  const empty = plain(env.app.getProductionDay('2026-10-08'));
+  assert.deepEqual(empty.made, {});
+  assert.equal(empty.itemsFrom, '2026-10-06');
+  assert.deepEqual(empty.items, ['Coffee Cake Muffin', 'Lemon Blueberry Muffin']);
+
+  const first = plain(env.app.getProductionDay('2026-01-05'));
+  assert.deepEqual([first.items, first.itemsFrom], [[], '']);
+});
+
+test('saveProductionDay updates in place, inserts sorted rows, and removes emptied LOSS rows', () => {
+  const env = setUp();
+  // Edit an existing text-dated row; Chocolate Cake Pop is left out, so it and the day's losses are cleared.
+  env.app.saveProductionDay('2026-09-29', [
+    { product: 'Coffee Cake Muffin', made: 11 },
+    { product: 'Vanilla Cake Pop', made: '12', loss: '' },
+  ]);
+  // New day between existing rows, with a loss (entered as a positive number).
+  const day = plain(env.app.saveProductionDay('2026-09-30', [{ product: 'Lemon Blueberry Muffin', made: '24', loss: '3' }]));
   assert.deepEqual(prodRows(env), [
     ['9/28', '', 20, 30],
-    ['9/29', '', 11, '', 12, 12],
+    ['9/29', '', 11, '', 12],
     ['2026-09-30', '', '', 24],
     ['2026-09-30', 'LOSS/DAMAGE', '', -3],
     ['10/1', '', 15, 15, '', '', 8],
@@ -85,28 +106,45 @@ test('saveProductionWeek updates in place, inserts sorted rows, and removes empt
     ['10/6', '', 40, 20],
   ]);
   assert.equal(tab(env, 'Production').formats['5:1'], 'm/d');
-  assert.equal(week.totals['Coffee Cake Muffin'], 51);
-  assert.equal(week.totals['Lemon Blueberry Muffin'], 71);
+  assert.deepEqual(day.items, ['Lemon Blueberry Muffin']);
+  assert.equal(day.week.totals['Coffee Cake Muffin'], 51);
+  assert.equal(day.week.totals['Lemon Blueberry Muffin'], 71);
 });
 
-test('saveProductionWeek appends a day after the last row and is idempotent', () => {
+test('saveProductionDay appends a day after the last row, is idempotent, and clears a day', () => {
   const env = setUp();
-  const day = { date: '2026-10-07', made: { 'Coffee Cake Muffin': 9 }, loss: { 'Coffee Cake Muffin': 1 } };
-  env.app.saveProductionWeek('2026-10-05', [day]);
-  env.app.saveProductionWeek('2026-10-05', [day]);
+  const entries = [{ product: 'Coffee Cake Muffin', made: 9, loss: 1 }];
+  env.app.saveProductionDay('2026-10-07', entries);
+  env.app.saveProductionDay('2026-10-07', entries);
   assert.deepEqual(prodRows(env).slice(-3), [
     ['10/6', '', 40, 20],
     ['2026-10-07', '', 9],
     ['2026-10-07', 'LOSS/DAMAGE', -1],
   ]);
-  // Clearing the day removes both rows.
-  env.app.saveProductionWeek('2026-10-05', [{ date: '2026-10-07', made: {}, loss: {} }]);
+  env.app.saveProductionDay('2026-10-07', []);
   assert.deepEqual(prodRows(env).slice(-1), [['10/6', '', 40, 20]]);
 });
 
-test('saveProductionWeek rejects days outside the week', () => {
+test('saveProductionDay adds a column for a new item and matches existing items ignoring case', () => {
   const env = setUp();
-  assert.throws(() => env.app.saveProductionWeek('2026-10-05', [{ date: '2026-10-11', made: {}, loss: {} }]), /not in the week/);
+  const day = plain(env.app.saveProductionDay('2026-10-07', [
+    { product: '  coffee cake   muffin ', made: 4 },
+    { product: 'Coffee Cake Muffin', made: 2 },
+    { product: 'Pumpkin Scone', made: 6 },
+    { product: 'Never Made', made: '' },
+  ]));
+  const headers = tab(env, 'Production').dump()[1];
+  assert.deepEqual(headers.slice(-2), ['Gluten Free Cookie', 'Pumpkin Scone']);
+  assert.ok(!headers.includes('Never Made'), 'no column for an item with no count');
+  assert.deepEqual(day.made, { 'Coffee Cake Muffin': 6, 'Pumpkin Scone': 6 });
+  assert.ok(plain(env.app.getAppData()).products.includes('Pumpkin Scone'));
+  assert.equal(plain(env.app.buildWeeklyInvoice('2026-10-05')).items.find(i => i.product === 'Pumpkin Scone').qty, 6);
+});
+
+test('saveProductionDay rejects bad dates and reserved names', () => {
+  const env = setUp();
+  assert.throws(() => env.app.saveProductionDay('10/7', []), /Invalid date/);
+  assert.throws(() => env.app.saveProductionDay('2026-10-07', [{ product: 'Note', made: 1 }]), /can't be an item/);
 });
 
 test('weekly invoice: build from production, save, remember prices, guard duplicates, update', () => {
@@ -261,9 +299,10 @@ test('invoice HTML escapes content and shows week, fees and notes', () => {
   });
   assert.match(html, /Smith &amp; &lt;Co&gt;/);
   assert.match(html, /\(assigned on save\)/);
-  assert.match(html, /Week of:<\/span> Sep 28 – Oct 3, 2026/);
-  assert.match(html, /Delivery \/ Fees<\/td><td class="n">\$5\.00/);
-  assert.match(html, /Total due<\/td><td class="n">\$10\.00/);
+  assert.match(html, /Week of:<\/td><td class="value">Sep 28 – Oct 3, 2026/);
+  assert.match(html, /<td>Muffin<\/td><td>\$2\.50<\/td><td>2<\/td><td>\$5\.00<\/td>/);
+  assert.match(html, /Delivery \/ Fees:<\/td><td class="amount">\$5\.00/);
+  assert.match(html, /Total Due:<\/td><td class="amount">\$10\.00/);
   assert.match(html, /Leave at back door/);
   assert.match(html, /src="data:image\/png;base64,/);
 });
