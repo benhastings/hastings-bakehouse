@@ -46,11 +46,12 @@ test('formatWeekRange_ and formatUsDate_', () => {
   assert.equal(app.formatUsDate_('2026-08-01'), '8/1/2026');
 });
 
-test('nextInvoiceNumber_ increments per year and ignores other formats', () => {
-  assert.equal(app.nextInvoiceNumber_([], 2026), '2026-001');
-  assert.equal(app.nextInvoiceNumber_(['', '000123', '2026-009', '2026-010', '2025-044'], 2026), '2026-011');
-  assert.equal(app.nextInvoiceNumber_(['2026-010'], 2027), '2027-001');
-  assert.equal(app.nextInvoiceNumber_(['2026-999'], 2026), '2026-1000');
+test('nextInvoiceNumber_ carries on from the highest plain number, starting at `first`', () => {
+  assert.equal(app.nextInvoiceNumber_([], '16'), '16');
+  assert.equal(app.nextInvoiceNumber_(['', '16', '17', '2026-044', 'abc'], '16'), '18');
+  assert.equal(app.nextInvoiceNumber_(['9'], '16'), '16');
+  assert.equal(app.nextInvoiceNumber_(['40'], ''), '41');
+  assert.equal(app.nextInvoiceNumber_([], undefined), '1');
 });
 
 test('computeTotals_ rounds in cents', () => {

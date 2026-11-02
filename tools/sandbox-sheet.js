@@ -1,4 +1,4 @@
-// Writes .sandbox/Bakehouse Sandbox.xlsx: the sample sheet from tests/harness.js (made-up data, laid out like the real
+// Writes .sandbox/Bakehouse Sandbox.xlsx: the sandbox's sample sheet from tests/fakes.js (made-up data, laid out like the real
 // accounting sheet). Upload it to Google Drive and open it as a Google Sheet to get a practice sheet for stage 2 of
 // TESTING.md. No dependencies: the .xlsx is a small zip written by hand.
 //   npm run sandbox:sheet            -> sample data
@@ -8,9 +8,9 @@
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
-const { sampleTabs, blankTabs } = require('../tests/harness');
+const { sandboxTabs, blankTabs } = require('../tests/harness');
 
-const tabs = process.argv.includes('--blank') ? blankTabs() : sampleTabs();
+const tabs = process.argv.includes('--blank') ? blankTabs() : sandboxTabs();
 const out = path.join(__dirname, '..', '.sandbox', 'Bakehouse Sandbox.xlsx');
 
 const xml = s => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' + s;

@@ -5,7 +5,8 @@
 (function () {
   'use strict';
 
-  const KEY = 'bakehouse-demo-state';
+  // Bump the version to start every visitor over (e.g. when the sample data or starting day changes).
+  const KEY = 'bakehouse-demo-state-v2';
   const LINKS = { app: './', inspect: 'inspect.html', file: id => 'file.html#' + id };
 
   /**

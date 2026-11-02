@@ -301,5 +301,25 @@ function blankTabs() {
   return { Invoices: tabs.Invoices.slice(0, 2), Production: tabs.Production.slice(0, 2), Expenses: [] };
 }
 
-return { createApp, makeServices, templateCode, sampleTabs, blankTabs, sheetDate, formatIso, escapeHtml, TZ };
+/**
+ * The sample sheet carried on through October, for the sandbox and the online preview, which start on Mon Nov 2:
+ * a few more weeks of Demarest production and their invoices (made before the app, so unnumbered).
+ */
+function sandboxTabs() {
+  const tabs = sampleTabs();
+  // Mon–Sat counts per week for the five products, in the Production tab's column order.
+  const week = [[24, 18, 12, 12, 6], [20, 20, '', '', 8], [24, 18, 12, 12, ''], [18, 18, '', '', 8], [24, 24, 12, 12, 6], [12, 12, '', '', '']];
+  ['2026-10-12', '2026-10-19', '2026-10-26'].forEach((monday, w) => {
+    week.forEach((counts, d) => {
+      const date = new Date(Date.parse(monday + 'T12:00:00Z') + d * 86400000);
+      tabs.Production.push([(date.getUTCMonth() + 1) + '/' + date.getUTCDate(), ''].concat(counts));
+      if (w === 1 && d === 2) tabs.Production.push([(date.getUTCMonth() + 1) + '/' + date.getUTCDate(), 'LOSS/DAMAGE', -2]);
+    });
+  });
+  [['2026-10-03', 310], ['2026-10-10', 287.5], ['2026-10-17', 402], ['2026-10-24', 398], ['2026-10-31', 402]]
+    .forEach(([date, amount]) => tabs.Invoices.push([sheetDate(date), '', 'Demarest', 'Coffee Shop', amount, '']));
+  return tabs;
+}
+
+return { createApp, makeServices, templateCode, sampleTabs, sandboxTabs, blankTabs, sheetDate, formatIso, escapeHtml, TZ };
 });

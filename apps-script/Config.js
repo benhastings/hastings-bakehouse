@@ -46,6 +46,8 @@ const CONFIG = {
     ['Email Body',
       'Hi,\n\nAttached is invoice {number} for {description}, totaling {total}.\n\nThank you!\nHastings Bakehouse'],
     ['Invoice Footer', 'Thank you for your business!'],
+    // Invoice 15 was the last one made before the app.
+    ['First Invoice Number', '16'],
     ['PDF Folder Id', ''],
   ],
 };

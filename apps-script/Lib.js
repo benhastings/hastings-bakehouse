@@ -99,18 +99,17 @@ function formatUsDate_(iso) {
   return Number(iso.slice(5, 7)) + '/' + Number(iso.slice(8, 10)) + '/' + iso.slice(0, 4);
 }
 
-/** Next 'YYYY-NNN' invoice number given every existing number in the sheet. */
-function nextInvoiceNumber_(existing, year) {
-  const prefix = String(year) + '-';
-  let max = 0;
+/**
+ * Next invoice number: one more than the highest plain number already used, and never below `first` (so the app
+ * carries on from invoices numbered before it). Numbers in other formats are ignored.
+ */
+function nextInvoiceNumber_(existing, first) {
+  let next = Math.max(1, parseInt(first, 10) || 1);
   existing.forEach(n => {
     const text = String(n || '').trim();
-    if (text.indexOf(prefix) === 0) {
-      const seq = parseInt(text.slice(prefix.length), 10);
-      if (!isNaN(seq) && seq > max) max = seq;
-    }
+    if (/^\d+$/.test(text)) next = Math.max(next, parseInt(text, 10) + 1);
   });
-  return prefix + String(max + 1).padStart(3, '0');
+  return String(next);
 }
 
 function toCents_(value) {

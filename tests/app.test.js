@@ -67,24 +67,19 @@ test('getProductionWeek nets LOSS/DAMAGE and reads text and Date cells', () => {
   });
 });
 
-test('getProductionDay lists the day\'s items, or the last production day\'s when empty', () => {
+test('getProductionDay lists every item A–Z with the day\'s counts and its week', () => {
   const env = setUp();
+  const all = ['Chocolate Cake Pop', 'Coffee Cake Muffin', 'Gluten Free Cookie', 'Lemon Blueberry Muffin', 'Vanilla Cake Pop'];
   const day = plain(env.app.getProductionDay('2026-09-29'));
-  assert.deepEqual(day.items, ['Coffee Cake Muffin', 'Vanilla Cake Pop', 'Chocolate Cake Pop']);
+  assert.deepEqual(day.items, all);
   assert.deepEqual(day.made, { 'Coffee Cake Muffin': 10, 'Vanilla Cake Pop': 12, 'Chocolate Cake Pop': 12 });
   assert.deepEqual(day.loss, { 'Coffee Cake Muffin': 2, 'Chocolate Cake Pop': 1 });
-  assert.equal(day.itemsFrom, '');
   assert.equal(day.week.monday, '2026-09-28');
   assert.deepEqual(day.week.days[1], { date: '2026-09-29', made: 34, loss: 3 });
   assert.equal(day.week.totals['Chocolate Cake Pop'], 11);
 
   const empty = plain(env.app.getProductionDay('2026-10-08'));
-  assert.deepEqual(empty.made, {});
-  assert.equal(empty.itemsFrom, '2026-10-06');
-  assert.deepEqual(empty.items, ['Coffee Cake Muffin', 'Lemon Blueberry Muffin']);
-
-  const first = plain(env.app.getProductionDay('2026-01-05'));
-  assert.deepEqual([first.items, first.itemsFrom], [[], '']);
+  assert.deepEqual([empty.made, empty.items], [{}, all]);
 });
 
 test('saveProductionDay updates in place, inserts sorted rows, and removes emptied LOSS rows', () => {
@@ -106,7 +101,6 @@ test('saveProductionDay updates in place, inserts sorted rows, and removes empti
     ['10/6', '', 40, 20],
   ]);
   assert.equal(tab(env, 'Production').formats['5:1'], 'm/d');
-  assert.deepEqual(day.items, ['Lemon Blueberry Muffin']);
   assert.equal(day.week.totals['Coffee Cake Muffin'], 51);
   assert.equal(day.week.totals['Lemon Blueberry Muffin'], 71);
 });
@@ -166,14 +160,14 @@ test('weekly invoice: build from production, save, remember prices, guard duplic
   draft.items[4].unitPrice = 3;
   draft.email = 'orders@demarest.example';
   const saved = plain(env.app.saveInvoice(draft));
-  assert.equal(saved.number, '2026-001');
+  assert.equal(saved.number, '16');
   assert.equal(saved.total, 326.5); // (48+50+12+11)*2.5 + 8*3
 
   const row = tab(env, 'Invoices').dump()[saved.rowNumber - 1];
   assert.equal(saved.rowNumber, 7); // appended after the last existing row
   assert.equal(iso(row[0]), '2026-10-03');
   assert.deepEqual(row.slice(2, 5), ['Demarest', 'Coffee Shop', 326.5]);
-  assert.deepEqual(row.slice(6, 8), ['2026-001', 'saved']);
+  assert.deepEqual(row.slice(6, 8), ['16', 'saved']);
   assert.equal(iso(row[8]), '2026-09-28');
   assert.equal(tab(env, 'Invoices').formats['7:7'], '@');
 
@@ -187,20 +181,20 @@ test('weekly invoice: build from production, save, remember prices, guard duplic
 
   // Next build pre-fills saved prices and the customer's email, and flags the existing invoice.
   const again = plain(env.app.buildWeeklyInvoice('2026-09-28'));
-  assert.equal(again.existingNumber, '2026-001');
+  assert.equal(again.existingNumber, '16');
   assert.equal(again.email, 'orders@demarest.example');
   assert.equal(again.items[0].unitPrice, 2.5);
-  assert.throws(() => env.app.saveInvoice(again), /DUPLICATE_WEEK:2026-001/);
+  assert.throws(() => env.app.saveInvoice(again), /DUPLICATE_WEEK:16/);
 
   // A changed price is only remembered when asked.
-  const loaded = plain(env.app.getInvoice('2026-001'));
+  const loaded = plain(env.app.getInvoice('16'));
   assert.equal(loaded.items.length, 5);
   loaded.items[0].unitPrice = 2.75;
   loaded.items[1].unitPrice = 2.75;
   loaded.rememberPrices = ['Lemon Blueberry Muffin'];
   loaded.fees = '10';
   const updated = plain(env.app.saveInvoice(loaded));
-  assert.equal(updated.number, '2026-001');
+  assert.equal(updated.number, '16');
   assert.equal(updated.rowNumber, 7);
   assert.equal(updated.total, 361); // 326.5 + 0.25*(48+50) + 10
   assert.equal(tab(env, 'Invoices').dump().length, 7, 'updated in place, no new row');
@@ -213,10 +207,10 @@ test('weekly invoice: build from production, save, remember prices, guard duplic
   const cake = plain(env.app.saveInvoice({
     date: '2026-10-08', customer: 'Smith', goods: 'Celebration Cake', items: [{ product: 'Celebration Cake 8"', qty: 1, unitPrice: 60 }],
   }));
-  assert.equal(cake.number, '2026-002');
+  assert.equal(cake.number, '17');
 
   const list = plain(env.app.listInvoices(3));
-  assert.deepEqual(list.map(i => i.number), ['2026-002', '2026-001', '']);
+  assert.deepEqual(list.map(i => i.number), ['17', '16', '']);
 });
 
 test('saveInvoice validates input', () => {
@@ -228,7 +222,7 @@ test('saveInvoice validates input', () => {
   assert.throws(() => env.app.saveInvoice({ ...base, items: [{ product: '', qty: 2, unitPrice: 1 }] }), /needs a product/);
   assert.throws(() => env.app.saveInvoice({ ...base, email: 'nope' }), /doesn't look like an email/);
   assert.throws(() => env.app.getInvoice('2099-001'), /not found/);
-  assert.throws(() => env.app.setInvoiceStatus('2026-001', 'lost'), /Unknown status/);
+  assert.throws(() => env.app.setInvoiceStatus('16', 'lost'), /Unknown status/);
 });
 
 function savedWeekly(env) {
@@ -241,7 +235,7 @@ function savedWeekly(env) {
 test('saveAndDraftInvoice makes a PDF in the year folder and a Gmail draft with Reply-To', () => {
   const env = setUp();
   const result = plain(env.app.saveAndDraftInvoice(savedWeekly(env)));
-  assert.equal(result.number, '2026-001');
+  assert.equal(result.number, '16');
   assert.equal(result.draftError, undefined);
   assert.equal(result.fromBusiness, false);
   assert.equal(result.from, 'ben@example.com');
@@ -249,12 +243,12 @@ test('saveAndDraftInvoice makes a PDF in the year folder and a Gmail draft with 
 
   const d = env.gmail.drafts[0];
   assert.equal(d.to, 'orders@demarest.example');
-  assert.equal(d.subject, 'Hastings Bakehouse Invoice 2026-001');
-  assert.match(d.body, /invoice 2026-001 for the week of Sep 28 – Oct 3, 2026, totaling \$322\.50/);
+  assert.equal(d.subject, 'Hastings Bakehouse Invoice 16');
+  assert.match(d.body, /invoice 16 for the week of Sep 28 – Oct 3, 2026, totaling \$322\.50/);
   assert.equal(d.opts.replyTo, 'hastingsbakehouse@gmail.com');
   assert.equal(d.opts.from, undefined);
   assert.equal(d.opts.attachments[0].type, 'application/pdf');
-  assert.equal(d.opts.attachments[0].name, 'Hastings Bakehouse Invoice 2026-001 - Demarest - 2026-10-03.pdf');
+  assert.equal(d.opts.attachments[0].name, 'Hastings Bakehouse Invoice 16 - Demarest - 2026-10-03.pdf');
 
   const folderId = plain(env.app.readSettings_())['PDF Folder Id'];
   const year = env.drive.folders[folderId].folders.find(f => f.name === '2026');
@@ -265,14 +259,14 @@ test('saveAndDraftInvoice makes a PDF in the year folder and a Gmail draft with 
   assert.equal(row[12], 'r-draft-1');
 
   // Re-drafting replaces the old PDF and draft rather than piling up.
-  env.app.createInvoiceDraft('2026-001');
+  env.app.createInvoiceDraft('16');
   assert.equal(env.gmail.drafts[0].deleted, true);
   assert.equal(year.files[0].trashed, true);
   assert.equal(year.files.length, 2);
   // Status survives once it's further along.
-  env.app.setInvoiceStatus('2026-001', 'paid');
-  env.app.createInvoiceDraft('2026-001');
-  assert.equal(plain(env.app.getInvoice('2026-001')).status, 'paid');
+  env.app.setInvoiceStatus('16', 'paid');
+  env.app.createInvoiceDraft('16');
+  assert.equal(plain(env.app.getInvoice('16')).status, 'paid');
 });
 
 test('drafts come from the business address when it is a Gmail alias', () => {
@@ -287,7 +281,7 @@ test('a failed draft still keeps the saved invoice', () => {
   const inv = savedWeekly(env);
   inv.email = '';
   const result = plain(env.app.saveAndDraftInvoice(inv));
-  assert.equal(result.number, '2026-001');
+  assert.equal(result.number, '16');
   assert.match(result.draftError, /Add an email address for Demarest/);
 });
 

@@ -27,7 +27,8 @@ npm run sandbox -- --start=blank   # start over from an empty sheet (sample | se
 - Everything is saved in `.sandbox/state.json` (not committed), so you can stop and pick up later. `npm run dev` is the
   same thing without saving.
 
-The sample sheet is made up: past Demarest, Smith and Jones invoices and a few weeks of production.
+The sample sheet is made up: past Demarest, Smith and Jones invoices and production through October. The sandbox starts
+on Monday, Nov 2, 2026, the first week the app is used for.
 
 **Online preview, no computer setup:** https://benhastings.github.io/bakehouse-app-preview/ is the same sandbox running
 entirely in the browser, so it works on any phone. The strip on top links to its inspector. Whatever you enter stays in
@@ -45,10 +46,10 @@ a screenshot, or a GitHub issue) and we fix it in the sandbox before stage 2.
       nothing old changed.
 
 **B. Entering a day's production**
-- [ ] The Production tab opens on today. If nothing is entered yet, it lists the items from the last day you baked,
-      with empty counts. Type the counts (Enter jumps to the next one), remove items you didn't make, and **Save**.
+- [ ] The Production tab opens on today with every item, A–Z. Type how many were sent (Enter jumps to the next one),
+      leave the rest blank, and **Save**.
 - [ ] **+ Add item**: pick a known item from the suggestions, or type a new one. A new item says it will add a column;
-      after saving, the inspector's Production tab has that column and the item is suggested from then on.
+      after saving, the inspector's Production tab has that column and the item is listed on every day from then on.
 - [ ] Add an item that's already listed (any capitalization): the app points you to the existing row instead.
 - [ ] **Record loss/damage** shows a Loss column. Inspector: a `LOSS/DAMAGE` row only on days with losses.
 - [ ] Change a saved day and save again. The row is updated, not duplicated. Clear a loss: its `LOSS/DAMAGE` row goes.
@@ -59,7 +60,7 @@ a screenshot, or a GitHub issue) and we fix it in the sandbox before stage 2.
 **C. The weekly Demarest invoice**
 - [ ] **Create invoice for this week**: the quantities match **Totals by item**.
 - [ ] Prices are empty the first time. Enter them, add Demarest's email, **Save & draft email**.
-- [ ] The invoice number is `2026-001`, then `2026-002` and so on.
+- [ ] The first invoice is `16` (15 was the last one before the app), then `17` and so on.
 - [ ] Inspector: one Invoices row, its line items, the prices remembered, Demarest in Customers, a draft with the invoice
       attached. Open the attachment: is the invoice right? Is the email wording what you'd send?
 - [ ] Next week: prices and email fill in by themselves.
@@ -79,7 +80,7 @@ a screenshot, or a GitHub issue) and we fix it in the sandbox before stage 2.
 
 **F. Dates**
 - [ ] Pretend today is a **Sunday** (e.g. 2026-10-11). The invoice defaults to the week that just ended, dated Saturday.
-- [ ] Pretend today is **2027-01-04**. The next invoice is `2027-001`.
+- [ ] Pretend today is **2027-01-04**. Numbering carries on (no restart for the new year).
 
 **G. Mistakes**
 - [ ] **Save & draft** with no email: the invoice is still saved and the app says what's missing.

@@ -3,7 +3,7 @@
 Production tracking and invoicing for Hastings Bakehouse, as a Google Apps Script web app attached to the
 **Hastings Bakehouse Accounting** sheet.
 
-- **Production**: one day at a time. The day starts with the items from the last day you baked; add or remove rows as needed, plus loss/damage. A new item adds its own column. Writes the `Production` tab in the same format it already uses.
+- **Production**: one day at a time, listing every item A–Z with how many were sent and any loss/damage. A new item can be added on any day and gets its own column. Writes the `Production` tab in the same format it already uses.
 - **Invoice**: build the week's invoice from production (net of loss/damage × saved prices) or enter a one-off invoice. Saving writes the `Invoices` tab (plus line items).
 - **Save & create Gmail draft**: generates the PDF into a shared Drive folder and creates a Gmail draft to the customer with it attached. Review it in Gmail, then hit send.
 - **History**: reopen, duplicate, or mark invoices sent/paid.
@@ -31,10 +31,10 @@ The first time the app opens, it offers **Set up sheet**, which is also under th
 | `Invoice Items` (new) | One row per line item: Invoice #, Product, Qty, Unit Price, Line Total |
 | `Prices` (new) | Starts empty. A product's price is saved the first time it's invoiced, then filled in automatically. |
 | `Customers` (new) | Name, Email, Default Goods. Fills itself from invoices. |
-| `Settings` (new) | Business email, weekly customer (`Demarest`), email subject/body templates, invoice footer, PDF folder |
+| `Settings` (new) | Business email, weekly customer (`Demarest`), email subject/body templates, invoice footer, first invoice number, PDF folder |
 | Drive | A "Hastings Bakehouse Invoices" folder next to the sheet, shared with the sheet's editors. PDFs go in per-year subfolders. |
 
-Invoice numbers are `YYYY-NNN` (e.g. `2026-001`) and restart each year. Older invoice rows are left as they are and show in History as "entered before the app".
+Invoice numbers are plain and sequential, carrying on from the highest number in the sheet, starting at the Settings tab's `First Invoice Number` (16, since 15 was the last invoice before the app). Older invoice rows are left as they are and show in History as "entered before the app".
 
 Production columns are read from the `Production` header row. Adding an item in the app adds its column; adding a column by hand works too.
 

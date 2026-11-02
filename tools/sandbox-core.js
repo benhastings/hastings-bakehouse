@@ -22,7 +22,8 @@ const STARTS = {
 const CHANGES = ['setupSheet', 'saveProductionDay', 'saveInvoice', 'saveAndDraftInvoice', 'createInvoiceDraft',
   'createInvoicePdf', 'setInvoiceStatus'];
 
-const DEFAULT_TODAY = '2026-10-08';
+// Monday of the first week the app is used for (invoice 16).
+const DEFAULT_TODAY = '2026-11-02';
 
 /**
  * options: { loadApp(tabs, { today }), fakes (for sampleTabs/blankTabs), read() → saved state or null,
@@ -43,7 +44,7 @@ function createSandbox(options) {
   let dropped = [];
 
   function fresh() {
-    env = loadApp(state.start === 'blank' ? fakes.blankTabs() : fakes.sampleTabs(), { today: state.today });
+    env = loadApp(state.start === 'blank' ? fakes.blankTabs() : fakes.sandboxTabs(), { today: state.today });
     if (state.start === 'setup') env.app.setupSheet();
   }
 

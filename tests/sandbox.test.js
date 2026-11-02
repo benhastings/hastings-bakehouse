@@ -66,7 +66,7 @@ test('a saved sandbox from older code keeps the changes that still replay', () =
   fs.writeFileSync(file, JSON.stringify({ start: 'sample', today: '2026-10-08', actions: [
     { today: '2026-10-08', fn: 'setupSheet', args: [] },
     { today: '2026-10-08', fn: 'saveProductionWeek', args: ['2026-10-05', []] },
-    { today: '2026-10-08', fn: 'setInvoiceStatus', args: ['2026-001', 'paid'] },
+    { today: '2026-10-08', fn: 'setInvoiceStatus', args: ['16', 'paid'] },
   ] }));
   const sb = createSandbox({ stateFile: file });
   assert.deepEqual(sb.state.actions.map(a => a.fn), ['setupSheet']);
@@ -84,4 +84,14 @@ test('the pretend day moves with setToday and is replayed per change', () => {
   const again = createSandbox({ stateFile: file });
   assert.equal(again.state.today, '2027-01-04');
   assert.equal(again.state.actions[0].today, '2026-10-11');
+});
+
+test('the sandbox starts on Mon Nov 2, 2026 and its first invoice is 16', () => {
+  const sb = createSandbox({ start: 'setup' });
+  assert.equal(sb.call('getAppData', []).today, '2026-11-02');
+  assert.equal(sb.call('getProductionDay', ['2026-10-30']).week.days[4].made, 78);
+  sb.call('saveProductionDay', ['2026-11-02', [{ product: 'Coffee Cake Muffin', made: 24 }]]);
+  const inv = sb.call('buildWeeklyInvoice', ['2026-11-02']);
+  inv.items.forEach(i => { i.unitPrice = 2.5; });
+  assert.equal(sb.call('saveInvoice', [inv]).number, '16');
 });

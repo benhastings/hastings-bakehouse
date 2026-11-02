@@ -159,7 +159,7 @@ function saveInvoiceLocked_(inv) {
     const dup = invoices.find(i => i.weekOf === inv.weekOf && i.customer.toLowerCase() === inv.customer.toLowerCase());
     if (dup) throw new Error('DUPLICATE_WEEK:' + dup.number);
   }
-  const number = inv.number || nextInvoiceNumber_(invoices.map(i => i.number), inv.date.slice(0, 4));
+  const number = inv.number || nextInvoiceNumber_(invoices.map(i => i.number), readSettings_()['First Invoice Number']);
 
   const data = {};
   data[INV.date] = { value: inv.date, format: 'm/d/yyyy' };

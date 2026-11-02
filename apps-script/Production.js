@@ -64,20 +64,9 @@ function getProductionWeek(monday) {
   };
 }
 
-/** Most recent day before `date` with production, or '' if none. */
-function previousProductionDay_(rows, date) {
-  let best = '';
-  rows.forEach(r => {
-    if (r.date && r.date < date && r.date > best && r.note === '' && r.values &&
-      Object.keys(r.values).some(p => toNumber_(r.values[p]))) best = r.date;
-  });
-  return best;
-}
-
 /**
- * One day for the entry screen: its made/loss counts, the items to list (the
- * day's own, or else the last production day's so a typical day is just typing
- * numbers), and a summary of its Mon–Sat week.
+ * One day for the entry screen: its made/loss counts, every item on the
+ * Production tab (A–Z) to list, and a summary of its Mon–Sat week.
  */
 function getProductionDay(date) {
   assertIsoDate_(date, 'date');
@@ -88,15 +77,7 @@ function getProductionDay(date) {
   const loss = sumRows_(dayRows.filter(r => r.note === lossNote), prod.products);
   Object.keys(loss).forEach(p => { loss[p] = Math.abs(loss[p]); });
 
-  let items = prod.products.filter(p => made[p] || loss[p]);
-  let itemsFrom = '';
-  if (!items.length) {
-    itemsFrom = previousProductionDay_(prod.rows, date);
-    if (itemsFrom) {
-      const before = sumRows_(prod.rows.filter(r => r.date === itemsFrom && r.note === ''), prod.products);
-      items = prod.products.filter(p => before[p]);
-    }
-  }
+  const items = prod.products.slice().sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
 
   const monday = weekMonday_(date);
   const week = weekDays_(monday).map(d => {
@@ -111,7 +92,6 @@ function getProductionDay(date) {
     made: made,
     loss: loss,
     items: items,
-    itemsFrom: itemsFrom,
     // Rows with other notes still count toward the week's totals but aren't editable here.
     otherNotes: dayRows.filter(r => r.note && r.note !== lossNote).map(r => r.note),
     week: {
